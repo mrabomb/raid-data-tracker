@@ -107,7 +107,7 @@ public class FileReadWriter {
 			bufferedreader.close();
 			return RTList;
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Error occurred reading from file", e);
 			return new ArrayList<>();
 		}
 	}
@@ -144,7 +144,7 @@ public class FileReadWriter {
             IGNORE_RESULT(new File(getRaidFileName(RaidType.TOA)).createNewFile());
             IGNORE_RESULT(new File(getRaidFileName(null)).createNewFile());
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Error occurred creating new files", e);
 		}
 	}
 
@@ -162,7 +162,7 @@ public class FileReadWriter {
             String fileName = getRaidFileName(raidType);
 			ArrayList<RaidTracker> RTList = readFromFile(raidType);
 
-			FileWriter fw = new FileWriter(fileName, false); //the true will append the new data
+			FileWriter fw = new FileWriter(fileName, false); // the true will append the new data
 
 			for (RaidTracker RT : RTList) {
 
@@ -178,7 +178,7 @@ public class FileReadWriter {
 
 			fw.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Error occurred updating the log", e);
 		}
 	}
 
@@ -186,13 +186,13 @@ public class FileReadWriter {
 		try {
 			JsonParser parser = new JsonParser();
             String fileName = getRaidFileName(raidType);
-			FileWriter fw = new FileWriter(fileName, false); //the true will append the new data
+			FileWriter fw = new FileWriter(fileName, false); // the true will append the new data
 
 			for (RaidTracker RT : RTList) {
 				if (RT.getLootSplitPaid() > 0) {
 					RT.setSpecialLootInOwnName(true);
                 } else {
-					//bit of a wonky check, so try to avoid with lootsplitpaid if possible
+					// bit of a wonky check, so try to avoid with lootsplitpaid if possible
                     RT.setSpecialLootInOwnName(!RT.getLootList().isEmpty()
                             && RT.getLootList().get(0).getName().equalsIgnoreCase(RT.getSpecialLoot()));
 				}
@@ -205,7 +205,7 @@ public class FileReadWriter {
 			fw.close();
 
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Error occurred updating the log list", e);
 		}
 	}
 
@@ -217,7 +217,7 @@ public class FileReadWriter {
 		try {
 			IGNORE_RESULT(newFile.createNewFile());
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("Error occurred creating new file", e);
 		}
 
 		return isDeleted;
