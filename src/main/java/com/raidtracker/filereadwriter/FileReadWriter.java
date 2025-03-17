@@ -49,7 +49,7 @@ public class FileReadWriter {
 		}
 
         try {
-			log.info("writer started");
+			log.debug("writer started");
 			//use json format so serializing and deserializing is easy
 			JsonParser parser = new JsonParser();
 			FileWriter fw = new FileWriter(fileName,true); //the true will append the new data
@@ -167,7 +167,7 @@ public class FileReadWriter {
 			for (RaidTracker RT : RTList) {
 
 				if (RT.getUniqueID().equals(raidTracker.getUniqueID()) && !RT.equals(raidTracker)) {
-					log.info("writer updated log");
+					log.debug("writer updated log");
 					RT = raidTracker;
 				}
 

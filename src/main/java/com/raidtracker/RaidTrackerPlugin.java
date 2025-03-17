@@ -322,7 +322,7 @@ public class RaidTrackerPlugin extends Plugin
                 && message.getName().equals(TOA_EVENT_NAME_POINTS)
                 && (Integer) message.getData().get("version") == 1
         ) {
-			log.info("received PluginMessage from Tombs of Amascut plugin");
+			log.debug("received PluginMessage from Tombs of Amascut plugin");
 			int personalPoints = (Integer) message.getData().get("personalPoints");
 			int totalPoints = (Integer) message.getData().get("totalPoints");
 
