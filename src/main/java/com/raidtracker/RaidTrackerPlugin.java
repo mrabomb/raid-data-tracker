@@ -29,6 +29,7 @@ import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -119,6 +120,8 @@ public class RaidTrackerPlugin extends Plugin
 
 	@Inject
 	private PluginManager pluginManager;
+
+    private boolean isFirstGameTick = true;
 
 	@Provides
 	RaidTrackerConfig provideConfig(ConfigManager configManager)
@@ -284,9 +287,11 @@ public class RaidTrackerPlugin extends Plugin
 				|| client.getGameState() == GameState.CONNECTION_LOST)
 		{
 			raidTracker.setLoggedIn(false);
+            isFirstGameTick = true;
 		}
 		else if (client.getGameState() == GameState.HOPPING)
 		{
+            isFirstGameTick = true;
 			reset();
 		}
 	}
@@ -302,6 +307,17 @@ public class RaidTrackerPlugin extends Plugin
 
 	@Subscribe
 	public void onGameTick(GameTick gameTick) {
+
+        if (client.getLocalPlayer() == null) {
+            return;
+        }
+
+        if (isFirstGameTick) {
+            isFirstGameTick = false;
+            raidTracker.setProfileType(String.valueOf(RuneScapeProfileType.getCurrent(client)));
+            raidTracker.setAccountHash(client.getAccountHash());
+            SwingUtilities.invokeLater(() -> panel.loadRTList());
+        }
 
 		int WIDGET_TIMER = WidgetUtil.packComponentId(TOA_CANVAS_WIDGET_ID, TOA_TIMER_WIDGET_ID);
 		if (raidTracker.isInTombsOfAmascut() && client.getWidget(WIDGET_TIMER) != null) {

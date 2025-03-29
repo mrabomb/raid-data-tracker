@@ -8,6 +8,8 @@ import java.util.UUID;
 @Data
 public class RaidTracker {
 
+    long accountHash = -1;
+    String profileType = "";
     boolean chestOpened = false;
     boolean raidComplete = false;
     boolean loggedIn = false;
