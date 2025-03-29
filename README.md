@@ -6,11 +6,9 @@ Logs CoX, ToB, and ToA data, like purple splits, total points (in COX), or the a
 
 ## Images
 <div class="row">
-  <img vertical-align="Top" src="https://i.imgur.com/NCSNGbw.png">
-  <img vertical-align="Top" src="https://i.imgur.com/vwNVqe4.png">
-  <img vertical-align="Top" src="https://i.imgur.com/SKVqNAy.png">
-  <img vertical-align="Top" src="https://i.imgur.com/vwNVqe4.png">
-  <img vertical-align="Top" src="https://i.imgur.com/LPOsdaM.png">
+  <img src="https://i.imgur.com/MgoGU5C.png">
+  <img src="https://i.imgur.com/7Z5Axk6.png">
+  <img src="https://i.imgur.com/vf3eW0w.png">
 </div>
 
 ## Data Storage
@@ -20,6 +18,19 @@ Data is stored at `~/.runelite/raid-data-tracker/RAID/raid_tracker_data.log`, wh
 If you find any bugs or problems, feel free to message me on Discord - @raitab.
 
 ## Changelog:
+### v1.6.2
+- Added userHash and profileTypes to logs in preparation for log migration update
+- Fixed a bug where reading and writing of unicode non-breaking spaces (\u00A0) in usernames would return a &#xFFFD;
+- Fixed a bug where specialLootReceiver could be set to speed type combat achievement messages
+- Updated casing of filter options to be more uniform
+- Updated preview images in readme
+
+### v1.6.1
+- Removed System.out and System.err calls
+- Replaced e.printStackTrace() calls with logger
+- Updated TOA plugin warning message
+- Removed setting external plugin configs
+
 ### v1.6
 - Added Tombs of Amascut to the plugin - contributed by [@ndot](https://github.com/null-zero)
   - A massive thank you to [@LLemonDuck](https://github.com/LlemonDuck)
