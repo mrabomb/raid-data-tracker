@@ -64,7 +64,7 @@ import net.runelite.http.api.item.ItemPrice;
 public class RaidTrackerPlugin extends Plugin
 {
 	private static final String LEVEL_COMPLETE_MESSAGE = "complete! Duration:";
-	private static final String RAID_COMPLETE_MESSAGE_COX_TOB = "Congratulations - your raid is complete!";
+	private static final String RAID_COMPLETE_MESSAGE_COX = "Congratulations - your raid is complete!";
 	private static final String RAID_COMPLETE_MESSAGE_TOA = "Challenge complete: The Wardens.";
 	private static final String DUST_RECIPIENTS = "Dust recipients: ";
 	private static final String TWISTED_KIT_RECIPIENTS = "Twisted Kit recipients: ";
@@ -581,7 +581,7 @@ public class RaidTrackerPlugin extends Plugin
 
 			}
 
-			if (message.startsWith(RAID_COMPLETE_MESSAGE_COX_TOB) || message.startsWith(RAID_COMPLETE_MESSAGE_TOA)) {
+			if (message.startsWith(RAID_COMPLETE_MESSAGE_COX) || message.startsWith(RAID_COMPLETE_MESSAGE_TOA)) {
 				if (raidTracker.isInRaidChambers()) {
 					raidTracker.setTotalPoints(client.getVarbitValue(Varbits.TOTAL_POINTS));
 					raidTracker.setPersonalPoints(client.getVarpValue(VarPlayer.RAIDS_PERSONAL_POINTS));
@@ -716,8 +716,8 @@ public class RaidTrackerPlugin extends Plugin
 				}
 			}
 
-			//only special loot contain the "-" (except for the raid complete message)
-			if (raidTracker.isRaidComplete() && message.contains("-") && !message.startsWith(RAID_COMPLETE_MESSAGE_COX_TOB)) {
+			// Only special loot should contain the " - " (except for the raid complete message in Cox)
+			if (raidTracker.isRaidComplete() && message.contains(" - ") && !message.startsWith(RAID_COMPLETE_MESSAGE_COX)) {
 				//in case of multiple purples, a new purple is stored on a new line in the file, so a new raidtracker object will be used and written to the file
 				if (!raidTracker.getSpecialLootReceiver().isEmpty()) {
 					RaidTracker altRT = copyData();
