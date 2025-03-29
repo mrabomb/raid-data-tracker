@@ -102,7 +102,8 @@ public class RaidTrackerPlugin extends Plugin
 
 	private ComponentManager componentManager = null;
 
-	@Inject
+	@Setter
+    @Inject
 	private FileReadWriter fw;
 	private boolean writerStarted = false;
 	private boolean raidStarted = false;
@@ -992,11 +993,7 @@ public class RaidTrackerPlugin extends Plugin
 		return itemManager.getItemPrice(itemID) > 0 ? itemManager.getItemPrice(itemID) : itemManager.getItemComposition(itemID).getPrice();
 	}
 
-	public void setFw(FileReadWriter fw) {
-		this.fw = fw;
-	}
-
-	public void updateCurrentRT(RaidType raidType) {
+    public void updateCurrentRT(RaidType raidType) {
 		if (writerStarted) {
 			return;
 		}
