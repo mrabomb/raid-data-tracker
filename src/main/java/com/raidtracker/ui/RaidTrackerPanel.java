@@ -751,12 +751,10 @@ public class RaidTrackerPanel extends PluginPanel {
         wrapper.setBorder(new EmptyBorder(3, 3, 3, 3));
         wrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 
-        int splitGP = 0;
+        long splitGP = 0;
 
         if (loaded) {
-            splitGP = atLeastZero(getFilteredRTList().stream().mapToInt(RaidTracker::getLootSplitReceived).sum());
-
-
+            splitGP = atLeastZero(getFilteredRTList().stream().mapToLong(RaidTracker::getLootSplitReceived).sum());
         }
 
         JLabel textLabel = textPanel("Split GP earned:");
@@ -1993,6 +1991,10 @@ public class RaidTrackerPanel extends PluginPanel {
     }
 
     public int atLeastZero(int maybeLessThanZero) {
+        return Math.max(maybeLessThanZero, 0);
+    }
+
+    public long atLeastZero(long maybeLessThanZero) {
         return Math.max(maybeLessThanZero, 0);
     }
 
