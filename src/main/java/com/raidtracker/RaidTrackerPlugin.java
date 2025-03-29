@@ -508,13 +508,13 @@ public class RaidTrackerPlugin extends Plugin
 		String playerName = "";
 
 		if (client.getLocalPlayer() != null && client.getLocalPlayer().getName() != null) {
-			playerName = client.getLocalPlayer().getName();
+			playerName = Text.toJagexName(client.getLocalPlayer().getName());
 		}
 
 		if ((raidTracker.isInRaidChambers() || raidTracker.isInTheatreOfBlood() || raidTracker.isInTombsOfAmascut()) &&
 			(event.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION || event.getType() == ChatMessageType.GAMEMESSAGE)) {
 			//unescape java to avoid unicode
-			String message = unescapeJavaString(Text.removeTags(event.getMessage()));
+			String message = unescapeJavaString(Text.removeTags(event.getMessage())).replaceAll("\u00A0", " ");
 
 			// Fixes issue with inconsistent resets due to
 			// Varbits.TOA_RAID_LEVEL not resetting when you leave

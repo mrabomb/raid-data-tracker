@@ -104,11 +104,12 @@ public class RaidTrackerTest extends TestCase
             null,
             ChatMessageType.FRIENDSCHATNOTIFICATION,
             "",
-            "K1NG DK - Kodai insignia",
+            "K1NG\u00a0DK - Kodai insignia",
             "",
             0);
         raidTrackerPlugin.checkChatMessage(message, raidTracker);
 
+        assertEquals("K1NG DK", raidTracker.getSpecialLootReceiver());
 
 		raidTrackerPlugin.setSplits(raidTracker);
 
@@ -273,7 +274,7 @@ public class RaidTrackerTest extends TestCase
             null,
             ChatMessageType.FRIENDSCHATNOTIFICATION,
             "",
-            "K1NG DK - Kodai insignia",
+            "K1NG\u00A0DK - Kodai insignia",
             "",
             0);
         raidTrackerPlugin.checkChatMessage(message, raidTracker);

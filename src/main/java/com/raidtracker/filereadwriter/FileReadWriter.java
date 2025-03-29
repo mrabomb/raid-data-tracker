@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static net.runelite.client.RuneLite.RUNELITE_DIR;
+import net.runelite.client.util.Text;
 
 @Slf4j
 public class FileReadWriter {
@@ -84,6 +85,7 @@ public class FileReadWriter {
 
     public ArrayList<RaidTracker> readFromFile(String alternateFile, RaidType raidType) {
         String fileName = getRaidFileName(raidType);
+        boolean foundReplacementUnicode = false;
 
 		if (alternateFile.length() != 0) {
 			fileName = alternateFile;
@@ -96,6 +98,11 @@ public class FileReadWriter {
 			ArrayList<RaidTracker> RTList = new ArrayList<>();
 
 			while ((line = bufferedreader.readLine()) != null && line.length() > 0) {
+                if (line.contains("\uFFFD")) {
+                    foundReplacementUnicode = true;
+                    line = line.replace("\uFFFD", " ");
+                }
+
 				try {
 					RaidTracker parsed = gson.fromJson(parser.parse(line), RaidTracker.class);
 					RTList.add(parsed);
@@ -105,6 +112,12 @@ public class FileReadWriter {
 			}
 
 			bufferedreader.close();
+
+            if (foundReplacementUnicode) {
+                log.info("Found replacement unicode character while reading {} log: attempting to overwrite", Text.titleCase(raidType));
+                updateRTList(RTList, raidType);
+            }
+
 			return RTList;
 		} catch (IOException e) {
 			log.error("Error occurred reading from file", e);
