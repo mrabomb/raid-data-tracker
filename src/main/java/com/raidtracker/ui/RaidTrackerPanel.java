@@ -112,7 +112,7 @@ public class RaidTrackerPanel extends PluginPanel {
 	@Setter
 	private String raidLevelFilter = "All Levels";
     @Setter
-    private String teamSizeFilter = "All sizes";
+    private String teamSizeFilter = "All Sizes";
 
 	private final HashMap<String, int[]> toaFilterMap = new HashMap<>(4);
 
@@ -306,7 +306,6 @@ public class RaidTrackerPanel extends PluginPanel {
 	}
 
     public void updateView(boolean filterUpdate) {
-
         // If the panel is updated we don't need to show data for Beta worlds
         if (WorldUtils.playerOnBetaWorld(client)) {
 			panel.removeAll();
@@ -1077,14 +1076,14 @@ public class RaidTrackerPanel extends PluginPanel {
 		switch (selectedRaidTab) {
             case COX:
                 teamSize = new JComboBox<>(new String [] {
-                    "All sizes",
+                    "All Sizes",
                     "Solo",
                     "Duo",
                     "Trio",
-                    "4-man",
-                    "5-man",
-                    "6-man",
-                    "7-man",
+                    "4-Man",
+                    "5-Man",
+                    "6-Man",
+                    "7-Man",
                     "8-10 Players",
                     "11-14 Players",
                     "15-24 Players",
@@ -1093,30 +1092,30 @@ public class RaidTrackerPanel extends PluginPanel {
                 break;
 			case TOB:
 				teamSize = new JComboBox<>(new String [] {
-                    "All sizes",
+                    "All Sizes",
                     "Solo",
                     "Duo",
                     "Trio",
-                    "4-man",
-                    "5-man"
+                    "4-Man",
+                    "5-Man"
                 });
 				break;
 			case TOA:
 				teamSize = new JComboBox<>(new String [] {
-                    "All sizes",
+                    "All Sizes",
                     "Solo",
                     "Duo",
                     "Trio",
-                    "4-man",
-                    "5-man",
-                    "6-man",
-                    "7-man",
-                    "8-man"
+                    "4-Man",
+                    "5-Man",
+                    "6-Man",
+                    "7-Man",
+                    "8-Man"
                 });
 				break;
 			default:
                 teamSize = new JComboBox<>(new String [] {
-                    "All sizes",
+                    "All Sizes",
                     "Solo"
                 });
                 break;
@@ -2138,23 +2137,23 @@ public class RaidTrackerPanel extends PluginPanel {
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 3))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-            case "4-man":
+            case "4-Man":
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 4))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-            case "5-man":
+            case "5-Man":
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 5))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-            case "6-man":
+            case "6-Man":
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 6))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-            case "7-man":
+            case "7-Man":
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 7))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-			case "8-man":
+			case "8-Man":
 				tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 8))
 					.collect(Collectors.toCollection(ArrayList::new));
 				break;
