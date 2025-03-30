@@ -388,7 +388,7 @@ public class RaidTrackerPlugin extends Plugin
 
 				break;
 
-			case (InterfaceID.TOB):
+			case (InterfaceID.TOB_REWARD):
 				if (raidTracker.isChestOpened() || !raidTracker.isRaidComplete()) {
 					return;
 				}
