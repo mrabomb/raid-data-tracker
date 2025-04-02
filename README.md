@@ -18,6 +18,10 @@ Data is stored at `~/.runelite/raid-data-tracker/RAID/raid_tracker_data.log`, wh
 If you find any bugs or problems, feel free to message me on Discord - @raitab.
 
 ## Changelog:
+### v1.6.4
+- Fixed ToB splits not being displayed
+- Added ToB completion time split to be explicit from overall time
+- Added ToB duration tests
 
 ### v1.6.3
 - Fixed an incorrect widget ID used when logging TOB rewards

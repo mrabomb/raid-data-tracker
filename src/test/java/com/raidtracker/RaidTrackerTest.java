@@ -208,6 +208,59 @@ public class RaidTrackerTest extends TestCase
 
 	}
 
+    @Test
+    public void TestTobDuration()
+    {
+        RaidTracker raidTracker = new RaidTracker();
+        raidTracker.setInTheatreOfBlood(true);
+        raidTracker.setRaidComplete(true);
+
+        ChatMessage message = new ChatMessage(
+            null,
+            ChatMessageType.FRIENDSCHATNOTIFICATION,
+            "",
+            "Theatre of Blood total completion time: 1:16:07. Personal best: 19:53",
+            "",
+            0);
+        raidTrackerPlugin.checkChatMessage(message, raidTracker);
+
+        assertEquals(4567, raidTracker.getRaidTime());
+
+        message = new ChatMessage(
+            null,
+            ChatMessageType.FRIENDSCHATNOTIFICATION,
+            "",
+            "Theatre of Blood total completion time: 49:00.60 (new personal best)",
+            "",
+            0);
+        raidTrackerPlugin.checkChatMessage(message, raidTracker);
+
+        assertEquals(2941, raidTracker.getRaidTime());
+
+        message = new ChatMessage(
+            null,
+            ChatMessageType.FRIENDSCHATNOTIFICATION,
+            "",
+            "Wave 'The Final Challenge' (Normal Mode) complete!<br>Duration: <col=ff0000>5:47.40</col><br>Theatre of Blood completion time: <col=ff0000>21:49.80</col> (new personal best)",
+            "",
+            0);
+        raidTrackerPlugin.checkChatMessage(message, raidTracker);
+
+        assertEquals(347, raidTracker.getVerzikTime());
+
+        message = new ChatMessage(
+            null,
+            ChatMessageType.FRIENDSCHATNOTIFICATION,
+            "",
+            "Wave 'The Final Challenge' (Normal Mode) complete!<br>Duration: <col=ff0000>5:47.40</col><br>Theatre of Blood completion time: <col=ff0000>21:49.80</col> (new personal best)",
+            "",
+            0);
+        raidTrackerPlugin.checkChatMessage(message, raidTracker);
+
+        assertEquals(1310, raidTracker.getTobCompTime());
+
+    }
+
 	@Test
 	public void TestToaDuration()
 	{

@@ -64,6 +64,7 @@ public class RaidTracker {
     int sotetsegTime = -1;
     int xarpusTime = -1;
     int verzikTime = -1;
+    int tobCompTime = -1;
 
     String mvp= "";
     boolean mvpInOwnName = false;

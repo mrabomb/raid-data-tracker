@@ -1585,6 +1585,16 @@ public class RaidTrackerPanel extends PluginPanel {
                                     .getVerzikTime()
                             ),
                         1));
+                    timeTable.add(textPanel("Completion Time", 0));
+                    timeTable.add(textPanel(
+                        secondsToMinuteString(
+                            getFilteredRTList().stream()
+                                .filter(RT -> RT.getTobCompTime() > 0)
+                                .min(comparing(RaidTracker::getTobCompTime))
+                                .orElse(new RaidTracker())
+                                .getTobCompTime()
+                        ), 1));
+                    wrapper.add(timeTable);
 					break;
 				case TOA:
 					timeTableFourCol.setLayout(new GridLayout(0, 4));
