@@ -1973,22 +1973,32 @@ public class RaidTrackerPanel extends PluginPanel {
         }
 
         if (update) {
-            //only add  item to the map when the parent raidtracker is added (child RT's are getting update false)
-            if (RT.isInRaidChambers()) {
-                coxUUIDMap.put(RT.getUniqueID(), RT);
-            } else if (RT.isInTheatreOfBlood()) {
-                tobUUIDMap.put(RT.getUniqueID(), RT);
-            } else if (RT.isInTombsOfAmascut()) {
-				toaUUIDMap.put(RT.getUniqueID(), RT);
-			} else {
-                log.error("Drop update detected but no inRaid flags set.");
-            }
-            updateView();
+            addDropToPanel(RT, false);
         }
     }
 
     public void addDrop(RaidTracker RT) {
         addDrop(RT, true);
+    }
+
+    public void addDropToPanel(RaidTracker RT) {
+        addDropToPanel(RT, true);
+    }
+
+    public void addDropToPanel(RaidTracker RT, boolean updateRTList) {
+        if (RT.isInRaidChambers()) {
+            coxUUIDMap.put(RT.getUniqueID(), RT);
+            coxRTList = updateRTList ? new ArrayList<>(coxUUIDMap.values()) : coxRTList;
+        } else if (RT.isInTheatreOfBlood()) {
+            tobUUIDMap.put(RT.getUniqueID(), RT);
+            tobRTList = updateRTList ? new ArrayList<>(tobUUIDMap.values()) : tobRTList;
+        } else if (RT.isInTombsOfAmascut()) {
+            toaUUIDMap.put(RT.getUniqueID(), RT);
+            toaRTList = updateRTList ? new ArrayList<>(toaUUIDMap.values()) : toaRTList;
+        } else {
+            log.error("Drop update detected but no inRaid flags set.");
+        }
+        updateView();
     }
 
     public int atLeastZero(int maybeLessThanZero) {
