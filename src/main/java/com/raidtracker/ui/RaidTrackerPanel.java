@@ -8,6 +8,12 @@ import com.raidtracker.RaidType;
 import com.raidtracker.WorldUtils;
 import com.raidtracker.filereadwriter.FileReadWriter;
 
+import java.awt.Insets;
+import javax.swing.BorderFactory;
+import javax.swing.JTextPane;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -106,7 +112,7 @@ public class RaidTrackerPanel extends PluginPanel {
 	@Setter
 	private String raidLevelFilter = "All Levels";
     @Setter
-    private String teamSizeFilter = "All sizes";
+    private String teamSizeFilter = "All Sizes";
 
 	private final HashMap<String, int[]> toaFilterMap = new HashMap<>(4);
 
@@ -236,11 +242,8 @@ public class RaidTrackerPanel extends PluginPanel {
 		gbc.gridy = 0;
 		gbc.weightx = 1;
 		gbc.weighty = 1;
-		gbc.fill = SwingConstants.HORIZONTAL;
-
-
-		JPanel titleLabelWrapper = new JPanel();
-		String toaPluginExternalConfig = configManager.getConfiguration("tombsofamascut", "pointsTrackerAllowExternal");
+		gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(5, 5, 5, 5);
 
 		Plugin toaPlugin = pluginManager.getPlugins()
 			.stream()
@@ -248,111 +251,61 @@ public class RaidTrackerPanel extends PluginPanel {
 			.findFirst()
 			.orElse(null);
 
-		boolean isToAInstalled = toaPlugin != null;
-		boolean isToAEnabled = isToAInstalled && pluginManager.isPluginEnabled(toaPlugin);
+		boolean isToaPluginInstalled = toaPlugin != null;
+		boolean isToaPluginEnabled = isToaPluginInstalled && pluginManager.isPluginEnabled(toaPlugin);
+        boolean isToaPluginConfigSendToExternalEnabled = Boolean.parseBoolean(
+            configManager.getConfiguration("tombsofamascut", "pointsTrackerAllowExternal")
+        );
 
-		if (!isToAInstalled) {
-			titleLabelWrapper.add(getWarningLabel(0), BorderLayout.CENTER);
-		} else if (!isToAEnabled) {
-			titleLabelWrapper.add(getWarningLabel(1), BorderLayout.CENTER);
-		} else if (!Boolean.parseBoolean(toaPluginExternalConfig)) {
-			titleLabelWrapper.add(getWarningLabel(2), BorderLayout.CENTER);
+		if (!isToaPluginInstalled || !isToaPluginEnabled || !isToaPluginConfigSendToExternalEnabled) {
+            JTextPane warningPane = getTextPane("Raid Data Tracker has detected<br>" +
+                "that the <span style='color:lime'>Tombs of Amascut</span> plugin is " +
+                "either not installed, not enabled,<br> " +
+                "or the 'Send to external plugins'<br> " +
+                "setting is disabled.<br><br>" +
+                "To enable total raid party point<br>" +
+                "tracking in the Tombs of Amascut, please install and enable the plugin, " +
+                "and make sure that the<br>" +
+                "<strong>'Send to external plugins'</strong> option " +
+                "is enabled under the<br> <strong>'Points Tracker'</strong> settings.");
+            title.add(warningPane, gbc);
+
+            gbc.gridy++;
+            JButton close = new JButton();
+            close.setText("Close");
+            close.addActionListener(e -> updateView());
+            title.add(close, gbc);
 		} else {
 			updateView();
+            return;
 		}
-
-		gbc.gridwidth = 2;
-		title.add(titleLabelWrapper, gbc);
-
-		gbc.gridwidth = 1;
-		gbc.gridy++;
-		JButton enable = new JButton();
-		if (!isToAEnabled) {
-			enable.setText("Enable plugin");
-		} else {
-			enable.setText("Enable setting");
-		}
-		enable.addActionListener(e -> {
-			if (!isToAEnabled) {
-				pluginManager.setPluginEnabled(toaPlugin, true);
-				configManager.setConfiguration("tombsofamascut", "pointsTrackerAllowExternal", true);
-			} else
-			{
-				configManager.setConfiguration("tombsofamascut", "pointsTrackerAllowExternal", true);
-			}
-			updateView();
-		});
-
-		if (isToAInstalled) {
-			title.add(enable, gbc);
-			gbc.gridx++;
-		}
-		JButton close = new JButton();
-		close.setText("Close");
-		close.addActionListener(e -> {
-			updateView();
-		});
-		title.add(close, gbc);
 
 		panel.add(title);
 		panel.revalidate();
 		panel.repaint();
 	}
 
-	public JLabel getWarningLabel(int option) {
+    private JTextPane getTextPane(String htmlString) {
+        JTextPane pane = new JTextPane();
 
-		JLabel titleLabel;
-		switch (option) {
-			case 1:
-				titleLabel = new JLabel(
-                    "<html>Raid Data Tracker has detected<br>" +
-                    "that you do not have the<br>" +
-                    "Tombs of Amascut plugin enabled.<br><br>" +
-                    "The Tracker benefits from the<br>" +
-                    "accurate point tracking provided by<br>" +
-                    "the Tombs of Amascut plugin.<br><br>" +
-                    "It is recommended that you enable it.<br></html>"
-                );
-				break;
-			case 2:
-				titleLabel = new JLabel(
-                    "<html>Raid Data Tracker has detected<br>" +
-                    "that you do not have the<br>" +
-                    "Tombs of Amascut plugin's <br>" +
-                    "\"Send to External plugins\"<br>" +
-                    "config setting enabled.<br><br>" +
-                    "The Tracker benefits from the<br>" +
-                    "accurate point tracking provided by<br>" +
-                    "the Tombs of Amascut plugin.<br><br>" +
-                    "It is recommended that you enable it.<br></html>"
-                );
-				break;
-			case 0:
-			default:
-				titleLabel = new JLabel(
-                    "<html>Raid Data Tracker has detected<br>" +
-                    "that you do not have the<br>" +
-                    "Tombs of Amascut plugin installed.<br><br>" +
-                    "The Tracker benefits from the<br>" +
-                    "accurate point tracking provided by<br>" +
-                    "the Tombs of Amascut plugin.<br><br>" +
-                    "It is recommended that you install<br>" +
-                    "it from the plugin hub.<br></html>"
-                );
-				break;
-		}
+        pane.setEditable(false);
+        pane.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+        pane.setContentType("text/html");
+        pane.setText("<html>" + htmlString + "</html>");
 
-		titleLabel.setForeground(Color.WHITE);
-		titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		return titleLabel;
-	}
+        SimpleAttributeSet set = new SimpleAttributeSet();
+        StyleConstants.setAlignment(set, StyleConstants.ALIGN_CENTER);
+        StyledDocument doc = pane.getStyledDocument();
+        doc.setParagraphAttributes(0, doc.getLength(), set, false);
+
+        return pane;
+    }
 
 	public void updateView() {
 		updateView(false);
 	}
 
     public void updateView(boolean filterUpdate) {
-
         // If the panel is updated we don't need to show data for Beta worlds
         if (WorldUtils.playerOnBetaWorld(client)) {
 			panel.removeAll();
@@ -797,12 +750,10 @@ public class RaidTrackerPanel extends PluginPanel {
         wrapper.setBorder(new EmptyBorder(3, 3, 3, 3));
         wrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 
-        int splitGP = 0;
+        long splitGP = 0;
 
         if (loaded) {
-            splitGP = atLeastZero(getFilteredRTList().stream().mapToInt(RaidTracker::getLootSplitReceived).sum());
-
-
+            splitGP = atLeastZero(getFilteredRTList().stream().mapToLong(RaidTracker::getLootSplitReceived).sum());
         }
 
         JLabel textLabel = textPanel("Split GP earned:");
@@ -1123,14 +1074,14 @@ public class RaidTrackerPanel extends PluginPanel {
 		switch (selectedRaidTab) {
             case COX:
                 teamSize = new JComboBox<>(new String [] {
-                    "All sizes",
+                    "All Sizes",
                     "Solo",
                     "Duo",
                     "Trio",
-                    "4-man",
-                    "5-man",
-                    "6-man",
-                    "7-man",
+                    "4-Man",
+                    "5-Man",
+                    "6-Man",
+                    "7-Man",
                     "8-10 Players",
                     "11-14 Players",
                     "15-24 Players",
@@ -1139,30 +1090,30 @@ public class RaidTrackerPanel extends PluginPanel {
                 break;
 			case TOB:
 				teamSize = new JComboBox<>(new String [] {
-                    "All sizes",
+                    "All Sizes",
                     "Solo",
                     "Duo",
                     "Trio",
-                    "4-man",
-                    "5-man"
+                    "4-Man",
+                    "5-Man"
                 });
 				break;
 			case TOA:
 				teamSize = new JComboBox<>(new String [] {
-                    "All sizes",
+                    "All Sizes",
                     "Solo",
                     "Duo",
                     "Trio",
-                    "4-man",
-                    "5-man",
-                    "6-man",
-                    "7-man",
-                    "8-man"
+                    "4-Man",
+                    "5-Man",
+                    "6-Man",
+                    "7-Man",
+                    "8-Man"
                 });
 				break;
 			default:
                 teamSize = new JComboBox<>(new String [] {
-                    "All sizes",
+                    "All Sizes",
                     "Solo"
                 });
                 break;
@@ -1632,6 +1583,16 @@ public class RaidTrackerPanel extends PluginPanel {
                                     .getVerzikTime()
                             ),
                         1));
+                    timeTable.add(textPanel("Completion Time", 0));
+                    timeTable.add(textPanel(
+                        secondsToMinuteString(
+                            getFilteredRTList().stream()
+                                .filter(RT -> RT.getTobCompTime() > 0)
+                                .min(comparing(RaidTracker::getTobCompTime))
+                                .orElse(new RaidTracker())
+                                .getTobCompTime()
+                        ), 1));
+                    wrapper.add(timeTable);
 					break;
 				case TOA:
 					timeTableFourCol.setLayout(new GridLayout(0, 4));
@@ -2020,17 +1981,7 @@ public class RaidTrackerPanel extends PluginPanel {
         }
 
         if (update) {
-            //only add  item to the map when the parent raidtracker is added (child RT's are getting update false)
-            if (RT.isInRaidChambers()) {
-                coxUUIDMap.put(RT.getUniqueID(), RT);
-            } else if (RT.isInTheatreOfBlood()) {
-                tobUUIDMap.put(RT.getUniqueID(), RT);
-            } else if (RT.isInTombsOfAmascut()) {
-				toaUUIDMap.put(RT.getUniqueID(), RT);
-			} else {
-                log.error("Drop update detected but no inRaid flags set.");
-            }
-            updateView();
+            addDropToPanel(RT, false);
         }
     }
 
@@ -2038,7 +1989,31 @@ public class RaidTrackerPanel extends PluginPanel {
         addDrop(RT, true);
     }
 
+    public void addDropToPanel(RaidTracker RT) {
+        addDropToPanel(RT, true);
+    }
+
+    public void addDropToPanel(RaidTracker RT, boolean updateRTList) {
+        if (RT.isInRaidChambers()) {
+            coxUUIDMap.put(RT.getUniqueID(), RT);
+            coxRTList = updateRTList ? new ArrayList<>(coxUUIDMap.values()) : coxRTList;
+        } else if (RT.isInTheatreOfBlood()) {
+            tobUUIDMap.put(RT.getUniqueID(), RT);
+            tobRTList = updateRTList ? new ArrayList<>(tobUUIDMap.values()) : tobRTList;
+        } else if (RT.isInTombsOfAmascut()) {
+            toaUUIDMap.put(RT.getUniqueID(), RT);
+            toaRTList = updateRTList ? new ArrayList<>(toaUUIDMap.values()) : toaRTList;
+        } else {
+            log.error("Drop update detected but no inRaid flags set.");
+        }
+        updateView();
+    }
+
     public int atLeastZero(int maybeLessThanZero) {
+        return Math.max(maybeLessThanZero, 0);
+    }
+
+    public long atLeastZero(long maybeLessThanZero) {
         return Math.max(maybeLessThanZero, 0);
     }
 
@@ -2184,23 +2159,23 @@ public class RaidTrackerPanel extends PluginPanel {
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 3))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-            case "4-man":
+            case "4-Man":
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 4))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-            case "5-man":
+            case "5-Man":
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 5))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-            case "6-man":
+            case "6-Man":
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 6))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-            case "7-man":
+            case "7-Man":
                 tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 7))
                         .collect(Collectors.toCollection(ArrayList::new));
                 break;
-			case "8-man":
+			case "8-Man":
 				tempRTList = tempRTList.stream().filter(RT -> (RT.getTeamSize() == 8))
 					.collect(Collectors.toCollection(ArrayList::new));
 				break;

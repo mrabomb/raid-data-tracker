@@ -10,7 +10,9 @@ import com.google.inject.Inject;
 import com.raidtracker.RaidTracker;
 import com.raidtracker.RaidTrackerItem;
 import com.raidtracker.RaidType;
+import java.util.stream.Collectors;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.File;
@@ -21,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static net.runelite.client.RuneLite.RUNELITE_DIR;
+import net.runelite.client.util.Text;
 
 @Slf4j
 public class FileReadWriter {
@@ -33,6 +36,7 @@ public class FileReadWriter {
     private String defaultDir;
 
 	@Inject
+    @Setter
 	private Gson gson;
 
     public void writeToFile(RaidTracker raidTracker) {
@@ -84,6 +88,7 @@ public class FileReadWriter {
 
     public ArrayList<RaidTracker> readFromFile(String alternateFile, RaidType raidType) {
         String fileName = getRaidFileName(raidType);
+        boolean foundReplacementUnicode = false;
 
 		if (alternateFile.length() != 0) {
 			fileName = alternateFile;
@@ -96,6 +101,11 @@ public class FileReadWriter {
 			ArrayList<RaidTracker> RTList = new ArrayList<>();
 
 			while ((line = bufferedreader.readLine()) != null && line.length() > 0) {
+                if (line.contains("\uFFFD")) {
+                    foundReplacementUnicode = true;
+                    line = line.replace("\uFFFD", " ");
+                }
+
 				try {
 					RaidTracker parsed = gson.fromJson(parser.parse(line), RaidTracker.class);
 					RTList.add(parsed);
@@ -105,6 +115,12 @@ public class FileReadWriter {
 			}
 
 			bufferedreader.close();
+
+            if (foundReplacementUnicode) {
+                log.info("Found replacement unicode character while reading {} log: attempting to overwrite", Text.titleCase(raidType));
+                updateRTList(RTList, raidType);
+            }
+
 			return RTList;
 		} catch (IOException e) {
 			log.error("Error occurred reading from file", e);
@@ -208,6 +224,20 @@ public class FileReadWriter {
 			log.error("Error occurred updating the log list", e);
 		}
 	}
+
+    public RaidTracker getUnclaimedRewardsRT(long accountHash, RaidType raidType) {
+        ArrayList<RaidTracker> logs = readFromFile(raidType);
+
+        logs = logs.stream().filter(
+            RT -> RT.getAccountHash() == accountHash
+        ).collect(Collectors.toCollection(ArrayList::new));
+
+        if (logs.isEmpty()) return null;
+
+        RaidTracker lastLog = logs.get(logs.size() - 1);
+
+        return lastLog.isChestOpened() ? null : lastLog;
+    }
 
 	public boolean delete(RaidType raidType) {
         File newFile = new File(getRaidFileName(raidType));

@@ -8,6 +8,8 @@ import java.util.UUID;
 @Data
 public class RaidTracker {
 
+    long accountHash = -1;
+    String profileType = "";
     boolean chestOpened = false;
     boolean raidComplete = false;
     boolean loggedIn = false;
@@ -62,6 +64,7 @@ public class RaidTracker {
     int sotetsegTime = -1;
     int xarpusTime = -1;
     int verzikTime = -1;
+    int tobCompTime = -1;
 
     String mvp= "";
     boolean mvpInOwnName = false;

@@ -29,6 +29,7 @@ import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -63,14 +64,16 @@ import net.runelite.http.api.item.ItemPrice;
 public class RaidTrackerPlugin extends Plugin
 {
 	private static final String LEVEL_COMPLETE_MESSAGE = "complete! Duration:";
-	private static final String RAID_COMPLETE_MESSAGE_COX_TOB = "Congratulations - your raid is complete!";
+	private static final String RAID_COMPLETE_MESSAGE_COX = "Congratulations - your raid is complete!";
 	private static final String RAID_COMPLETE_MESSAGE_TOA = "Challenge complete: The Wardens.";
 	private static final String DUST_RECIPIENTS = "Dust recipients: ";
 	private static final String TWISTED_KIT_RECIPIENTS = "Twisted Kit recipients: ";
 
-	private static final Pattern TOA_ROOM_COMPLETE_PATTERN = Pattern.compile("Challenge complete: ([A-Za-z- ]+).*Duration:.*?(\\d+:\\d+\\.?\\d+)(?:\\. )?.*");
-	private static final Pattern TOA_COMPLETION_PATTERN = Pattern.compile(".*Tombs of Amascut: (.*) Mode (total|challenge) completion time:.*?(\\d+:\\d+\\.?\\d+)\\..*");
+    private static final Pattern TOB_TOTAL_COMPLETION_PATTERN = Pattern.compile("Theatre of Blood total completion time: (\\d+:(?:\\d+:)?(?:\\d+\\.)?\\d+)(?:\\. )?.*");
+    private static final Pattern TOB_COMPLETION_PATTERN = Pattern.compile(".*Theatre of Blood completion time: (\\d+:(?:\\d+:)?(?:\\d+\\.)?\\d+)(?:\\. )?.*");
 
+	private static final Pattern TOA_ROOM_COMPLETE_PATTERN = Pattern.compile("Challenge complete: ([A-Za-z- ]+).*Duration:.*?(\\d+:\\d+?:?\\d+?\\.?\\d+)(?:\\. )?.*");
+	private static final Pattern TOA_COMPLETION_PATTERN = Pattern.compile(".*Tombs of Amascut: (.*) Mode (total|challenge) completion time:.*?(\\d+:\\d+?:?\\d+?\\.?\\d+)\\..*");
 	private static final String TOA_EVENT_NAMESPACE = "tombs-of-amascut";
 	private static final String TOA_EVENT_NAME_POINTS = "raidCompletedPoints";
 
@@ -102,7 +105,8 @@ public class RaidTrackerPlugin extends Plugin
 
 	private ComponentManager componentManager = null;
 
-	@Inject
+	@Setter
+    @Inject
 	private FileReadWriter fw;
 	private boolean writerStarted = false;
 	private boolean raidStarted = false;
@@ -118,6 +122,8 @@ public class RaidTrackerPlugin extends Plugin
 
 	@Inject
 	private PluginManager pluginManager;
+
+    private boolean isFirstGameTick = true;
 
 	@Provides
 	RaidTrackerConfig provideConfig(ConfigManager configManager)
@@ -188,8 +194,7 @@ public class RaidTrackerPlugin extends Plugin
 			// if the player is inside of a raid then check the raid
 			if (tempInRaid && raidTracker.isLoggedIn()) {
 				checkRaidPresence();
-			}
-			else if (raidTracker.isRaidComplete() && !raidTracker.isChestOpened()) {
+			} else if (raidTracker.isRaidComplete() && !raidTracker.isChestOpened()) {
 				//player just exited a raid, if the chest is not looted write the raid tracker anyway.
 				//might deprecate the writing after widgetloaded in the future, not decided yet.
 				if (writerStarted) {
@@ -210,8 +215,7 @@ public class RaidTrackerPlugin extends Plugin
 		if (tempInTob ^ raidTracker.isInTheatreOfBlood()) {
 			if (tempInTob && raidTracker.isLoggedIn()) {
 				checkTobPresence();
-			}
-			else if (raidTracker.isRaidComplete()) {
+			} else if (raidTracker.isRaidComplete()) {
 				//not tested
 
 				if (writerStarted) {
@@ -283,9 +287,11 @@ public class RaidTrackerPlugin extends Plugin
 				|| client.getGameState() == GameState.CONNECTION_LOST)
 		{
 			raidTracker.setLoggedIn(false);
+            isFirstGameTick = true;
 		}
 		else if (client.getGameState() == GameState.HOPPING)
 		{
+            isFirstGameTick = true;
 			reset();
 		}
 	}
@@ -301,6 +307,17 @@ public class RaidTrackerPlugin extends Plugin
 
 	@Subscribe
 	public void onGameTick(GameTick gameTick) {
+
+        if (client.getLocalPlayer() == null) {
+            return;
+        }
+
+        if (isFirstGameTick) {
+            isFirstGameTick = false;
+            raidTracker.setProfileType(String.valueOf(RuneScapeProfileType.getCurrent(client)));
+            raidTracker.setAccountHash(client.getAccountHash());
+            SwingUtilities.invokeLater(() -> panel.loadRTList());
+        }
 
 		int WIDGET_TIMER = WidgetUtil.packComponentId(TOA_CANVAS_WIDGET_ID, TOA_TIMER_WIDGET_ID);
 		if (raidTracker.isInTombsOfAmascut() && client.getWidget(WIDGET_TIMER) != null) {
@@ -358,110 +375,134 @@ public class RaidTrackerPlugin extends Plugin
 					return;
 				}
 
-				raidTracker.setLootList(lootListFactory(rewardItemContainer.getItems()));
+                raidTracker.setLootList(lootListFactory(rewardItemContainer.getItems()));
 
-				fw.writeToFile(raidTracker);
+                writerStarted = true;
 
-				writerStarted = true;
+                fw.writeToFile(raidTracker);
 
-				SwingUtilities.invokeLater(() -> {
-					panel.addDrop(raidTracker);
-					reset();
-				});
+                SwingUtilities.invokeLater(() -> {
+                    panel.addDrop(raidTracker);
+                    reset();
+                });
 
-				break;
+                break;
 
-			case (InterfaceID.TOB):
-				if (raidTracker.isChestOpened() || !raidTracker.isRaidComplete()) {
-					return;
-				}
+            case (InterfaceID.TOB_REWARD):
+                RaidTracker unclaimedRewardsRT = null;
 
-				raidTracker.setChestOpened(true);
+                if (!raidTracker.isRaidComplete()) {
+                    unclaimedRewardsRT = fw.getUnclaimedRewardsRT(raidTracker.getAccountHash(), RaidType.TOB);
+                    if (unclaimedRewardsRT != null) {
+                        log.info("Found unclaimed rewards RT");
+                        raidTracker = unclaimedRewardsRT;
+                    }
+                }
 
-				rewardItemContainer = client.getItemContainer(InventoryID.THEATRE_OF_BLOOD_CHEST);
+                if (raidTracker.isChestOpened() || !raidTracker.isRaidComplete()) {
+                    return;
+                }
 
-				if (rewardItemContainer == null) {
-					return;
-				}
+                raidTracker.setChestOpened(true);
 
-				raidTracker.setLootList(lootListFactory(rewardItemContainer.getItems()));
+                rewardItemContainer = client.getItemContainer(InventoryID.THEATRE_OF_BLOOD_CHEST);
 
-				break;
-			//459 is the mvp screen of TOB
-			case (459):
-				AtomicReference<String> mvp = new AtomicReference<>("");
-				AtomicReference<String> player1 = new AtomicReference<>("");
-				AtomicReference<String> player2 = new AtomicReference<>("");
-				AtomicReference<String> player3 = new AtomicReference<>("");
-				AtomicReference<String> player4 = new AtomicReference<>("");
-				AtomicReference<String> player5 = new AtomicReference<>("");
-				AtomicInteger deathsPlayer1 = new AtomicInteger();
-				AtomicInteger deathsPlayer2 = new AtomicInteger();
-				AtomicInteger deathsPlayer3 = new AtomicInteger();
-				AtomicInteger deathsPlayer4 = new AtomicInteger();
-				AtomicInteger deathsPlayer5 = new AtomicInteger();
+                if (rewardItemContainer == null) {
+                    return;
+                }
 
-				clientThread.invokeLater(() -> {
-					mvp.set(getWidgetText(client.getWidget(459, 14)));
-					player1.set(getWidgetText(client.getWidget(459, 22)));
-					player2.set(getWidgetText(client.getWidget(459, 24)));
-					player3.set(getWidgetText(client.getWidget(459, 26)));
-					player4.set(getWidgetText(client.getWidget(459, 28)));
-					player5.set(getWidgetText(client.getWidget(459, 30)));
-					deathsPlayer1.set(getWidgetNumber(client.getWidget(459, 23)));
-					deathsPlayer2.set(getWidgetNumber(client.getWidget(459, 25)));
-					deathsPlayer3.set(getWidgetNumber(client.getWidget(459, 27)));
-					deathsPlayer4.set(getWidgetNumber(client.getWidget(459, 29)));
-					deathsPlayer5.set(getWidgetNumber(client.getWidget(459, 31)));
+                raidTracker.setLootList(lootListFactory(rewardItemContainer.getItems()));
 
-					raidTracker.setMvp(mvp.get());
-					raidTracker.setTobPlayer1(player1.get());
-					raidTracker.setTobPlayer2(player2.get());
-					raidTracker.setTobPlayer3(player3.get());
-					raidTracker.setTobPlayer4(player4.get());
-					raidTracker.setTobPlayer5(player5.get());
+                writerStarted = true;
 
-					raidTracker.setTobPlayer1DeathCount(deathsPlayer1.get());
-					raidTracker.setTobPlayer2DeathCount(deathsPlayer2.get());
-					raidTracker.setTobPlayer3DeathCount(deathsPlayer3.get());
-					raidTracker.setTobPlayer4DeathCount(deathsPlayer4.get());
-					raidTracker.setTobPlayer5DeathCount(deathsPlayer5.get());
+                if (unclaimedRewardsRT != null) {
+                    raidTracker.setChestOpened(true);
+                    fw.updateRTLog(raidTracker, RaidType.TOB);
+                } else {
+                    fw.writeToFile(raidTracker);
+                }
 
-					if (client.getLocalPlayer() != null && client.getLocalPlayer().getName() != null) {
-						raidTracker.setMvpInOwnName(mvp.get().equalsIgnoreCase(client.getLocalPlayer().getName()));
-					}
-				});
-				break;
+                SwingUtilities.invokeLater(() -> {
+                    panel.addDropToPanel(raidTracker);
+                    reset();
+                });
+                break;
 
-			case (InterfaceID.TOA_REWARD):
-				if (raidTracker.isChestOpened() || !raidTracker.isRaidComplete()) {
-					return;
-				}
+            //459 is the mvp screen of TOB
+            case (459):
+                AtomicReference<String> mvp = new AtomicReference<>("");
+                AtomicReference<String> player1 = new AtomicReference<>("");
+                AtomicReference<String> player2 = new AtomicReference<>("");
+                AtomicReference<String> player3 = new AtomicReference<>("");
+                AtomicReference<String> player4 = new AtomicReference<>("");
+                AtomicReference<String> player5 = new AtomicReference<>("");
+                AtomicInteger deathsPlayer1 = new AtomicInteger();
+                AtomicInteger deathsPlayer2 = new AtomicInteger();
+                AtomicInteger deathsPlayer3 = new AtomicInteger();
+                AtomicInteger deathsPlayer4 = new AtomicInteger();
+                AtomicInteger deathsPlayer5 = new AtomicInteger();
 
-				raidTracker.setChestOpened(true);
+                clientThread.invokeLater(() -> {
+                    mvp.set(getWidgetText(client.getWidget(459, 14)));
+                    player1.set(getWidgetText(client.getWidget(459, 22)));
+                    player2.set(getWidgetText(client.getWidget(459, 24)));
+                    player3.set(getWidgetText(client.getWidget(459, 26)));
+                    player4.set(getWidgetText(client.getWidget(459, 28)));
+                    player5.set(getWidgetText(client.getWidget(459, 30)));
+                    deathsPlayer1.set(getWidgetNumber(client.getWidget(459, 23)));
+                    deathsPlayer2.set(getWidgetNumber(client.getWidget(459, 25)));
+                    deathsPlayer3.set(getWidgetNumber(client.getWidget(459, 27)));
+                    deathsPlayer4.set(getWidgetNumber(client.getWidget(459, 29)));
+                    deathsPlayer5.set(getWidgetNumber(client.getWidget(459, 31)));
 
-				rewardItemContainer = client.getItemContainer(InventoryID.TOA_REWARD_CHEST);
+                    raidTracker.setMvp(mvp.get());
+                    raidTracker.setTobPlayer1(player1.get());
+                    raidTracker.setTobPlayer2(player2.get());
+                    raidTracker.setTobPlayer3(player3.get());
+                    raidTracker.setTobPlayer4(player4.get());
+                    raidTracker.setTobPlayer5(player5.get());
 
-				if (rewardItemContainer == null) {
-					return;
-				}
+                    raidTracker.setTobPlayer1DeathCount(deathsPlayer1.get());
+                    raidTracker.setTobPlayer2DeathCount(deathsPlayer2.get());
+                    raidTracker.setTobPlayer3DeathCount(deathsPlayer3.get());
+                    raidTracker.setTobPlayer4DeathCount(deathsPlayer4.get());
+                    raidTracker.setTobPlayer5DeathCount(deathsPlayer5.get());
 
-				raidTracker.setLootList(lootListFactory(rewardItemContainer.getItems()));
+                    if (client.getLocalPlayer() != null && client.getLocalPlayer().getName() != null) {
+                        raidTracker.setMvpInOwnName(mvp.get().equalsIgnoreCase(client.getLocalPlayer().getName()));
+                    }
+                });
+                break;
 
-				fw.writeToFile(raidTracker);
+            case (InterfaceID.TOA_REWARD):
+                if (raidTracker.isChestOpened() || !raidTracker.isRaidComplete()) {
+                    return;
+                }
 
-				writerStarted = true;
+                raidTracker.setChestOpened(true);
 
-				SwingUtilities.invokeLater(() -> {
-					// Doesn't use reset() due to ToA using a log update function on tomb exit
-					panel.addDrop(raidTracker);
-					writerStarted = false;
-				});
-				break;
-			case (InterfaceID.TOA_PARTY):
-				SwingUtilities.invokeLater(() -> panel.showWarningView());
-				break;
-		}
+                rewardItemContainer = client.getItemContainer(InventoryID.TOA_REWARD_CHEST);
+
+                if (rewardItemContainer == null) {
+                    return;
+                }
+
+                raidTracker.setLootList(lootListFactory(rewardItemContainer.getItems()));
+
+                fw.writeToFile(raidTracker);
+
+                writerStarted = true;
+
+                SwingUtilities.invokeLater(() -> {
+                    // Doesn't use reset() due to ToA using a log update function on tomb exit
+                    panel.addDrop(raidTracker);
+                    writerStarted = false;
+                });
+                break;
+            case (InterfaceID.TOA_PARTY):
+                SwingUtilities.invokeLater(() -> panel.showWarningView());
+                break;
+        }
 	}
 
 	private String getWidgetText(Widget widget) {
@@ -491,19 +532,23 @@ public class RaidTrackerPlugin extends Plugin
 		String playerName = "";
 
 		if (client.getLocalPlayer() != null && client.getLocalPlayer().getName() != null) {
-			playerName = client.getLocalPlayer().getName();
+			playerName = Text.toJagexName(client.getLocalPlayer().getName());
 		}
 
 		if ((raidTracker.isInRaidChambers() || raidTracker.isInTheatreOfBlood() || raidTracker.isInTombsOfAmascut()) &&
 			(event.getType() == ChatMessageType.FRIENDSCHATNOTIFICATION || event.getType() == ChatMessageType.GAMEMESSAGE)) {
 			//unescape java to avoid unicode
-			String message = unescapeJavaString(Text.removeTags(event.getMessage()));
+			String message = unescapeJavaString(Text.removeTags(event.getMessage())).replaceAll("\u00A0", " ");
+            Matcher m;
 
 			// Fixes issue with inconsistent resets due to
 			// Varbits.TOA_RAID_LEVEL not resetting when you leave
 			if (message.contains("You enter the Tombs of Amascut")) {
 				reset();
 			}
+
+            // Filter out message with "-" so we don't accidentally consider it specialLoot
+            if (message.contains("- patient record")) return;
 
 			if (message.contains(LEVEL_COMPLETE_MESSAGE)) {
 				String timeString = message.split("complete! Duration: ")[1];
@@ -564,7 +609,7 @@ public class RaidTrackerPlugin extends Plugin
 
 			}
 
-			if (message.startsWith(RAID_COMPLETE_MESSAGE_COX_TOB) || message.startsWith(RAID_COMPLETE_MESSAGE_TOA)) {
+			if (message.startsWith(RAID_COMPLETE_MESSAGE_COX) || message.startsWith(RAID_COMPLETE_MESSAGE_TOA)) {
 				if (raidTracker.isInRaidChambers()) {
 					raidTracker.setTotalPoints(client.getVarbitValue(Varbits.TOTAL_POINTS));
 					raidTracker.setPersonalPoints(client.getVarpValue(VarPlayer.RAIDS_PERSONAL_POINTS));
@@ -620,8 +665,6 @@ public class RaidTrackerPlugin extends Plugin
 			}
 
 			if (message.contains("Challenge complete") || message.contains("total completion")) {
-
-				Matcher m;
 				if ((m = TOA_ROOM_COMPLETE_PATTERN.matcher(message)).matches()) {
 					String room = m.group(1).toLowerCase();
 					int duration = stringTimeToSeconds(m.group(2));
@@ -674,11 +717,15 @@ public class RaidTrackerPlugin extends Plugin
 				}
 			}
 
-			if (message.toLowerCase().contains("theatre of blood wave completion")) {
-				raidTracker.setRaidTime(stringTimeToSeconds(message.toLowerCase().split("time: ")[1].split("personal")[0]));
-			}
+            if ((m = TOB_COMPLETION_PATTERN.matcher(message)).matches()) {
+                raidTracker.setTobCompTime(stringTimeToSeconds(m.group(1)));
+            }
 
-			if (raidTracker.isRaidComplete() && message.contains("Team size:")) {
+            if ((m = TOB_TOTAL_COMPLETION_PATTERN.matcher(message)).matches()) {
+                raidTracker.setRaidTime(stringTimeToSeconds(m.group(1)));
+            }
+
+            if (raidTracker.isRaidComplete() && message.contains("Team size:")) {
 				raidTracker.setRaidTime(stringTimeToSeconds(message.split("Duration: ")[1].split(" ")[0]));
 			}
 
@@ -696,11 +743,12 @@ public class RaidTrackerPlugin extends Plugin
 					}
 					raidTracker.setTeamSize(teamSize);
 					raidTracker.setRaidComplete(true);
+                    raidTracker.setDate(System.currentTimeMillis());
 				}
 			}
 
-			//only special loot contain the "-" (except for the raid complete message)
-			if (raidTracker.isRaidComplete() && message.contains("-") && !message.startsWith(RAID_COMPLETE_MESSAGE_COX_TOB)) {
+			// Only special loot should contain the " - " (except for the raid complete message in Cox)
+			if (raidTracker.isRaidComplete() && message.contains(" - ") && !message.startsWith(RAID_COMPLETE_MESSAGE_COX)) {
 				//in case of multiple purples, a new purple is stored on a new line in the file, so a new raidtracker object will be used and written to the file
 				if (!raidTracker.getSpecialLootReceiver().isEmpty()) {
 					RaidTracker altRT = copyData();
@@ -718,8 +766,7 @@ public class RaidTrackerPlugin extends Plugin
 					fw.writeToFile(altRT);
 
 					SwingUtilities.invokeLater(() -> panel.addDrop(altRT, false));
-				}
-				else {
+				} else {
 					raidTracker.setSpecialLootReceiver(message.split(" - ")[0]);
 					raidTracker.setSpecialLoot(message.split(" - ")[1]);
 
@@ -892,7 +939,8 @@ public class RaidTrackerPlugin extends Plugin
 
 	public RaidTracker copyData() {
 		RaidTracker RT = new RaidTracker();
-
+        RT.setAccountHash(raidTracker.getAccountHash());
+        RT.setProfileType(raidTracker.getProfileType());
 		RT.setDate(raidTracker.getDate());
 		RT.setTeamSize(raidTracker.getTeamSize());
 		RT.setChallengeMode(raidTracker.isChallengeMode());
@@ -906,6 +954,8 @@ public class RaidTrackerPlugin extends Plugin
 	private void reset()
 	{
 		raidTracker = new RaidTracker();
+        raidTracker.setAccountHash(client.getAccountHash());
+        raidTracker.setProfileType(String.valueOf(RuneScapeProfileType.getCurrent(client)));
 		writerStarted = false;
 		raidStarted = false;
 	}
@@ -992,11 +1042,7 @@ public class RaidTrackerPlugin extends Plugin
 		return itemManager.getItemPrice(itemID) > 0 ? itemManager.getItemPrice(itemID) : itemManager.getItemComposition(itemID).getPrice();
 	}
 
-	public void setFw(FileReadWriter fw) {
-		this.fw = fw;
-	}
-
-	public void updateCurrentRT(RaidType raidType) {
+    public void updateCurrentRT(RaidType raidType) {
 		if (writerStarted) {
 			return;
 		}
@@ -1007,7 +1053,7 @@ public class RaidTrackerPlugin extends Plugin
 
 		SwingUtilities.invokeLater(() -> {
 			panel.updateView(true);
-			reset();
+            reset();
 		});
 	}
 
