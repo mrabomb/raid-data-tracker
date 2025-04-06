@@ -20,8 +20,9 @@ If you find any bugs or problems, feel free to message me on Discord - @raitab.
 ## Changelog:
 ### v1.6.4
 - Fixed ToB splits not being displayed
-- Added ToB completion time split to be explicit from overall time
+- Added ToB completion time split to be explicit from the overall time
 - Added ToB duration tests
+- Fixed cumulative split gp limit from overflowing after 2.14b - contributed by [@gtjamesa](https://github.com/gtjamesa)
 
 ### v1.6.3
 - Fixed an incorrect widget ID used when logging TOB rewards
