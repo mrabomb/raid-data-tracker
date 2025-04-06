@@ -10,7 +10,9 @@ import com.google.inject.Inject;
 import com.raidtracker.RaidTracker;
 import com.raidtracker.RaidTrackerItem;
 import com.raidtracker.RaidType;
+import java.util.stream.Collectors;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
 import java.io.File;
@@ -34,6 +36,7 @@ public class FileReadWriter {
     private String defaultDir;
 
 	@Inject
+    @Setter
 	private Gson gson;
 
     public void writeToFile(RaidTracker raidTracker) {
@@ -221,6 +224,20 @@ public class FileReadWriter {
 			log.error("Error occurred updating the log list", e);
 		}
 	}
+
+    public RaidTracker getUnclaimedRewardsRT(long accountHash, RaidType raidType) {
+        ArrayList<RaidTracker> logs = readFromFile(raidType);
+
+        logs = logs.stream().filter(
+            RT -> RT.getAccountHash() == accountHash
+        ).collect(Collectors.toCollection(ArrayList::new));
+
+        if (logs.isEmpty()) return null;
+
+        RaidTracker lastLog = logs.get(logs.size() - 1);
+
+        return lastLog.isChestOpened() ? null : lastLog;
+    }
 
 	public boolean delete(RaidType raidType) {
         File newFile = new File(getRaidFileName(raidType));

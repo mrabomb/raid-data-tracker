@@ -18,6 +18,12 @@ Data is stored at `~/.runelite/raid-data-tracker/RAID/raid_tracker_data.log`, wh
 If you find any bugs or problems, feel free to message me on Discord - @raitab.
 
 ## Changelog:
+
+### v1.6.3
+- Fixed an incorrect widget ID used when logging TOB rewards
+- Adds ToB bank rewards chest handling
+- Fixed a bug where the untradable "patient record" drop message from Verzik would get registered as special loot
+
 ### v1.6.2
 - Added userHash and profileTypes to logs in preparation for log migration update
 - Fixed a bug where reading and writing of unicode non-breaking spaces (\u00A0) in usernames would return a &#xFFFD;
