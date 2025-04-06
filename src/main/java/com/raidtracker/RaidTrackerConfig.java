@@ -110,8 +110,8 @@ public interface RaidTrackerConfig extends Config
 
 	@ConfigItem(
 			keyName = "showMVPs",
-			name = "Show MVP's",
-			description = "Disable this checkmark to hide the MVP's Panel in the ui"
+			name = "Show MVPs",
+			description = "Disable this checkmark to hide the MVPs Panel in the ui"
 	)
 	default boolean showMVPs()
 	{

@@ -1282,7 +1282,7 @@ public class RaidTrackerPanel extends PluginPanel {
 
         }
 
-        JLabel textLabel = textPanel("Total MVP's:");
+        JLabel textLabel = textPanel("Total MVPs:");
 
         JLabel valueLabel = textPanel(Integer.toString(mvpAmount));
 
