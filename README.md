@@ -18,6 +18,14 @@ Data is stored at `~/.runelite/raid-data-tracker/RAID/raid_tracker_data.log`, wh
 If you find any bugs or problems, feel free to message me on Discord - @raitab.
 
 ## Changelog:
+### v1.6.6
+- Fix normal ToA Completion time tracking regex
+- Fix splits not being tracked for users that don't have 'Precise Timing' enabled
+
+### v1.6.5
+- Remove apostrophe from MVP plural
+- Update Gradle to 8.13 and add shadow Jar task
+
 ### v1.6.4
 - Fixed ToB splits not being displayed
 - Added ToB completion time split to be explicit from the overall time

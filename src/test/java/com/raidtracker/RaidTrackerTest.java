@@ -259,6 +259,17 @@ public class RaidTrackerTest extends TestCase
 
         assertEquals(1310, raidTracker.getTobCompTime());
 
+        message = new ChatMessage(
+            null,
+            ChatMessageType.FRIENDSCHATNOTIFICATION,
+            "",
+            "Wave 'The Final Challenge' (Normal Mode) complete!<br>Duration: <col=ff0000>5:47.40</col><br>Theatre of Blood completion time: <col=ff0000>21:49</col>",
+            "",
+            0);
+        raidTrackerPlugin.checkChatMessage(message, raidTracker);
+
+        assertEquals(1309, raidTracker.getTobCompTime());
+
     }
 
 	@Test
@@ -302,6 +313,16 @@ public class RaidTrackerTest extends TestCase
 
 		assertEquals(2211, raidTracker.getRaidTime());
 
+        message = new ChatMessage(
+            null,
+            ChatMessageType.FRIENDSCHATNOTIFICATION,
+            "",
+            "Tombs of Amascut total completion time: 24:30.00 (new personal best)",
+            "",
+            0);
+        raidTrackerPlugin.checkChatMessage(message, raidTracker);
+
+        assertEquals(1470, raidTracker.getRaidTime());
 	}
 
 	@Test

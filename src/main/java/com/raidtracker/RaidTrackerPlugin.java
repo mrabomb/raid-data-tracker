@@ -69,11 +69,11 @@ public class RaidTrackerPlugin extends Plugin
 	private static final String DUST_RECIPIENTS = "Dust recipients: ";
 	private static final String TWISTED_KIT_RECIPIENTS = "Twisted Kit recipients: ";
 
-    private static final Pattern TOB_TOTAL_COMPLETION_PATTERN = Pattern.compile("Theatre of Blood total completion time: (\\d+:(?:\\d+:)?(?:\\d+\\.)?\\d+)(?:\\. )?.*");
-    private static final Pattern TOB_COMPLETION_PATTERN = Pattern.compile(".*Theatre of Blood completion time: (\\d+:(?:\\d+:)?(?:\\d+\\.)?\\d+)(?:\\. )?.*");
+    private static final Pattern TOB_TOTAL_COMPLETION_PATTERN = Pattern.compile("Theatre of Blood total completion time: (?<duration>(?:(?:(?<hours>\\d+):)?(?:(?<minutes>\\d+):))?(?<seconds>\\d{1,2})(?:\\.(?<miliseconds>\\d+))?)(?:\\. )?.*");
+    private static final Pattern TOB_COMPLETION_PATTERN = Pattern.compile(".*Theatre of Blood completion time: (?<duration>(?:(?:(?<hours>\\d+):)?(?:(?<minutes>\\d+):))?(?<seconds>\\d{1,2})(?:\\.(?<miliseconds>\\d+))?)(?:\\. )?.*");
 
-	private static final Pattern TOA_ROOM_COMPLETE_PATTERN = Pattern.compile("Challenge complete: ([A-Za-z- ]+).*Duration:.*?(\\d+:\\d+?:?\\d+?\\.?\\d+)(?:\\. )?.*");
-	private static final Pattern TOA_COMPLETION_PATTERN = Pattern.compile(".*Tombs of Amascut: (.*) Mode (total|challenge) completion time:.*?(\\d+:\\d+?:?\\d+?\\.?\\d+)\\..*");
+	private static final Pattern TOA_ROOM_COMPLETE_PATTERN = Pattern.compile("Challenge complete: (?<room>[A-Za-z- ]+).*Duration:.*?(?<duration>(?:(?:(?<hours>\\d+):)?(?:(?<minutes>\\d+):))?(?<seconds>\\d{1,2})(?:\\.(?<miliseconds>\\d+))?)(?:\\. )?.*");
+	private static final Pattern TOA_COMPLETION_PATTERN = Pattern.compile(".*Tombs of Amascut(?:: (?<mode>.*) Mode)? (?<type>total|challenge) completion time:.*?(?<duration>(?:(?:(?<hours>\\d+):)?(?<minutes>\\d+):)?(?<seconds>\\d{1,2})(?:\\.(?<miliseconds>\\d+))?)(?:\\. )?.*");
 	private static final String TOA_EVENT_NAMESPACE = "tombs-of-amascut";
 	private static final String TOA_EVENT_NAME_POINTS = "raidCompletedPoints";
 
@@ -666,12 +666,13 @@ public class RaidTrackerPlugin extends Plugin
 
 			if (message.contains("Challenge complete") || message.contains("total completion")) {
 				if ((m = TOA_ROOM_COMPLETE_PATTERN.matcher(message)).matches()) {
-					String room = m.group(1).toLowerCase();
-					int duration = stringTimeToSeconds(m.group(2));
-					if (room == null || room.isEmpty()) {
-						log.warn("Failed to find room {} for completion string {}", m.group(1), event.getMessage());
-						return;
-					}
+                    String room = m.group("room").toLowerCase();
+                    int duration = stringTimeToSeconds(m.group("duration"));
+
+                    if (room.isEmpty()) {
+                        log.warn("Failed to find room for completion string {}", event.getMessage());
+                        return;
+                    }
 
 					switch (room) {
 						case "path of crondis":
@@ -701,28 +702,29 @@ public class RaidTrackerPlugin extends Plugin
 						case "the wardens":
 							raidTracker.setWardensTime(duration);
 							break;
+                        default:
+                            log.warn("Failed to find room for completion string {}", event.getMessage());
 					}
 				}
 
 				if ((m = TOA_COMPLETION_PATTERN.matcher(message)).matches()) {
-					int duration = stringTimeToSeconds(m.group(3));
-					if (Objects.equals(m.group(2), "challenge"))
-					{
-						raidTracker.setToaCompTime(duration);
-					}
-					if (Objects.equals(m.group(2), "total"))
-					{
+					int duration = stringTimeToSeconds(m.group("duration"));
+
+					if (Objects.equals(m.group("type"), "challenge")) {
+                        raidTracker.setToaCompTime(duration);
+                    }
+                    if (Objects.equals(m.group("type"), "total")) {
 						raidTracker.setRaidTime(duration);
 					}
 				}
 			}
 
             if ((m = TOB_COMPLETION_PATTERN.matcher(message)).matches()) {
-                raidTracker.setTobCompTime(stringTimeToSeconds(m.group(1)));
+                raidTracker.setTobCompTime(stringTimeToSeconds(m.group("duration")));
             }
 
             if ((m = TOB_TOTAL_COMPLETION_PATTERN.matcher(message)).matches()) {
-                raidTracker.setRaidTime(stringTimeToSeconds(m.group(1)));
+                raidTracker.setRaidTime(stringTimeToSeconds(m.group("duration")));
             }
 
             if (raidTracker.isRaidComplete() && message.contains("Team size:")) {
