@@ -9,6 +9,7 @@ import com.raidtracker.ui.RaidTrackerPanel;
 import com.raidtracker.ui.RaidUniques;
 import junit.framework.TestCase;
 import net.runelite.api.Client;
+import net.runelite.api.ItemID;
 import net.runelite.client.game.ItemManager;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,6 +20,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.concurrent.ExecutionException;
+import java.io.File;
+import java.nio.file.Files;
 
 import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
@@ -37,7 +40,76 @@ public class TestRaidTrackerPanel extends TestCase
     @Before
     public void setUp()
     {
+        FileReadWriter.clearDataRootDir();
+        try {
+            FileReadWriter.setDataRootDir(Files.createTempDirectory("raid-data-tracker").toFile());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         Guice.createInjector(BoundFieldModule.of(this)).injectMembers(this);
+        seedCanvasbaData();
+    }
+
+    private void seedCanvasbaData() {
+        fw.updateUsername("Canvasba");
+
+        ArrayList<RaidTracker> seed = new ArrayList<>();
+        seed.add(createRaidEntry("Arcane Prayer Scroll", false, "k1", "", "", "", false, ItemID.ADAMANTITE_ORE));
+        seed.add(createRaidEntry("Arcane Prayer Scroll", true, "k1", "", "", "", false, ItemID.ARCANE_PRAYER_SCROLL));
+        seed.add(createRaidEntry("Dexterous Prayer Scroll", false, "k2", "", "", "", false, ItemID.IRON_ORE));
+        seed.add(createRaidEntry("", false, "k3", "Canvasba", "", "", false, ItemID.METAMORPHIC_DUST));
+        seed.add(createRaidEntry("", false, "k3", "Random", "", "", false, ItemID.COAL));
+        seed.add(createRaidEntry("", false, "k4", "", "Canvasba", "Canvasba", true, ItemID.TWISTED_ANCESTRAL_COLOUR_KIT));
+        seed.add(createRaidEntry("", false, "k4", "", "Random", "Canvasba", true, ItemID.IRON_ORE));
+        seed.add(createRaidEntry("", false, "k4", "", "Canvasba", "Random", false, ItemID.TWISTED_ANCESTRAL_COLOUR_KIT));
+        seed.add(createRaidEntry("", false, "k4", "", "Random", "Random", false, ItemID.RUNITE_ORE));
+
+        for (RaidTracker rt : seed) {
+            fw.writeToFile(rt);
+        }
+    }
+
+    private RaidTracker createRaidEntry(String specialLoot, boolean ownDrop, String killId,
+                                        String dustReceiver, String kitReceiver, String petReceiver,
+                                        boolean petInMyName, int itemId) {
+        RaidTracker rt = new RaidTracker();
+        rt.setSpecialLoot(specialLoot);
+        rt.setKillCountID(killId);
+        rt.setTeamSize(3);
+        rt.setDate(System.currentTimeMillis());
+        rt.setChallengeMode(false);
+        rt.setInRaidChambers(true);
+        rt.setInTheatreOfBlood(false);
+        rt.setDustReceiver(dustReceiver);
+        rt.setKitReceiver(kitReceiver);
+        rt.setPetReceiver(petReceiver);
+        rt.setPetInMyName(petInMyName);
+
+        if (!specialLoot.isEmpty()) {
+            rt.setSpecialLootReceiver("Canvasba");
+            rt.setSpecialLootInOwnName(ownDrop);
+        }
+
+        ArrayList<RaidTrackerItem> lootList = new ArrayList<>();
+        RaidTrackerItem item = new RaidTrackerItem();
+        item.setId(itemId);
+        item.setName(getItemName(itemId));
+        item.setQuantity(1);
+        item.setPrice(1);
+        lootList.add(item);
+        rt.setLootList(lootList);
+        return rt;
+    }
+
+    private String getItemName(int itemId) {
+        if (itemId == ItemID.ARCANE_PRAYER_SCROLL) return "Arcane Prayer Scroll";
+        if (itemId == ItemID.DEXTEROUS_PRAYER_SCROLL) return "Dexterous Prayer Scroll";
+        if (itemId == ItemID.METAMORPHIC_DUST) return "Metamorphic Dust";
+        if (itemId == ItemID.TWISTED_ANCESTRAL_COLOUR_KIT) return "Twisted ancestral colour kit";
+        if (itemId == ItemID.ADAMANTITE_ORE) return "Adamantite ore";
+        if (itemId == ItemID.IRON_ORE) return "Iron ore";
+        if (itemId == ItemID.RUNITE_ORE) return "Runite ore";
+        return "Coal";
     }
 
     @Test

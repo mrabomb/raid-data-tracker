@@ -33,6 +33,7 @@ import net.runelite.client.util.ImageUtil;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -178,6 +179,8 @@ public class RaidTrackerPanel extends PluginPanel {
 
 	private Component titleComponent;
 	private Component filterComponent;
+    private JComboBox<String> profileSelector;
+    private boolean updatingProfileSelector;
 
     public RaidTrackerPanel(
         final ItemManager itemManager,
@@ -1132,6 +1135,26 @@ public class RaidTrackerPanel extends PluginPanel {
             }
         });
 
+        profileSelector = new JComboBox<>();
+        refreshProfileSelector();
+        profileSelector.setPreferredSize(new Dimension(130, 25));
+        profileSelector.setFocusable(false);
+        profileSelector.setToolTipText("Select profile type to view");
+        profileSelector.setFont(FontManager.getRunescapeSmallFont());
+        profileSelector.addActionListener(e -> {
+            if (updatingProfileSelector) {
+                return;
+            }
+            String selectedProfile = (String) profileSelector.getSelectedItem();
+            if (selectedProfile == null || selectedProfile.equals(fw.getProfileName())) {
+                return;
+            }
+            fw.setProfileName(selectedProfile);
+            if (loaded) {
+                updateView();
+            }
+        });
+
 
         c.gridy = 1;
         wrapper.add(Box.createRigidArea(new Dimension(0, 5)), c);
@@ -1171,6 +1194,13 @@ public class RaidTrackerPanel extends PluginPanel {
 			wrapper.add(getToAFilterPanel(), c);
 		}
 
+        c.gridx = 0;
+        c.gridy = 5;
+        c.gridwidth = 2;
+        c.anchor = GridBagConstraints.WEST;
+        wrapper.add(profileSelector, c);
+        c.gridwidth = 1;
+
         JPanel buttonWrapper = new JPanel();
         buttonWrapper.setPreferredSize(new Dimension(82, 20));
         buttonWrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
@@ -1208,9 +1238,7 @@ public class RaidTrackerPanel extends PluginPanel {
         JButton refresh = imageButton(refreshIcon);
         refresh.setToolTipText("Refresh kills logged");
         refresh.addActionListener(e -> {
-            if (loaded) {
-                loadRTList();
-            }
+            loadRTList();
         });
 
         JButton delete = imageButton(deleteIcon);
@@ -1256,7 +1284,9 @@ public class RaidTrackerPanel extends PluginPanel {
         buttonWrapper.add(refresh);
         buttonWrapper.add(delete);
 
+        c.gridx = 2;
         c.gridy = 0;
+        c.anchor = GridBagConstraints.EAST;
 
         wrapper.add(buttonWrapper, c);
         return wrapper;
@@ -1851,6 +1881,16 @@ public class RaidTrackerPanel extends PluginPanel {
 
     public void loadRTList() {
         //TODO: support for a custom file so that it can be added to onedrive for example.
+        if (fw.getUsername() == null && !fw.initializeExistingFlatFolders()) {
+            coxRTList = new ArrayList<>();
+            tobRTList = new ArrayList<>();
+            toaRTList = new ArrayList<>();
+            loaded = true;
+            refreshProfileSelector();
+            updateView();
+            return;
+        }
+
         coxRTList = fw.readFromFile(RaidType.COX);
         for (RaidTracker RT : coxRTList) {
             coxUUIDMap.put(RT.getUniqueID(), RT);
@@ -1868,8 +1908,45 @@ public class RaidTrackerPanel extends PluginPanel {
 			toaUUIDMap.put(RT.getUniqueID(), RT);
 		}
 
+        refreshProfileSelector();
         loaded = true;
         updateView();
+    }
+
+    private void refreshProfileSelector() {
+        if (profileSelector == null) {
+            return;
+        }
+
+        String selectedProfile = fw.getProfileName();
+        if (selectedProfile == null) {
+            selectedProfile = FileReadWriter.ALL_PROFILE_TYPES;
+        }
+
+        DefaultComboBoxModel<String> profileModel = new DefaultComboBoxModel<>();
+        profileModel.addElement(FileReadWriter.ALL_PROFILE_TYPES);
+        for (String profileName : fw.getProfileNames()) {
+            profileModel.addElement(profileName);
+        }
+
+        updatingProfileSelector = true;
+        profileSelector.setModel(profileModel);
+        if (containsProfile(profileModel, selectedProfile)) {
+            profileSelector.setSelectedItem(selectedProfile);
+        } else {
+            profileSelector.setSelectedItem(FileReadWriter.ALL_PROFILE_TYPES);
+            fw.setProfileName(FileReadWriter.ALL_PROFILE_TYPES);
+        }
+        updatingProfileSelector = false;
+    }
+
+    private boolean containsProfile(DefaultComboBoxModel<String> profileModel, String profileName) {
+        for (int i = 0; i < profileModel.getSize(); i++) {
+            if (profileName.equals(profileModel.getElementAt(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public ArrayList<RaidTracker> filterRTListByName(String name) {
