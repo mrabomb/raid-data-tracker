@@ -178,4 +178,75 @@ public class TestRaidTrackerPanel extends TestCase
         assertEquals(4, panel.getDistinctKills(l).size());
 
     }
+
+    @Test
+    public void TestProfileHashAndTypeFilters() throws Exception {
+        java.nio.file.Path tempDir = Files.createTempDirectory("raid-data-tracker-hash");
+        FileReadWriter.clearDataRootDir();
+        FileReadWriter.setDataRootDir(tempDir.toFile());
+
+        File f = new File(tempDir.toFile(), "player");
+        File coxDir = new File(f, "cox");
+        assertTrue(coxDir.mkdirs());
+
+        File logFile = new File(coxDir, "raid_tracker_data.log");
+        try (java.io.FileWriter writer = new java.io.FileWriter(logFile)) {
+            writer.write("{\"profileType\":\"NORMAL\",\"accountHash\":111,\"inRaidChambers\":true,\"specialLoot\":\"Shared Loot\"}\n");
+            writer.write("{\"profileType\":\"IRONMAN\",\"accountHash\":111,\"inRaidChambers\":true,\"specialLoot\":\"Shared Loot\"}\n");
+            writer.write("{\"profileType\":\"IRONMAN\",\"accountHash\":222,\"inRaidChambers\":true,\"specialLoot\":\"Shared Loot\"}\n");
+        }
+
+        fw.updateUsername("player");
+        fw.setGson(new com.google.gson.Gson());
+        fw.setProfileName("IRONMAN");
+        fw.setProfileHash("111");
+
+        ArrayList<RaidTracker> filtered = fw.readFromFile(logFile.getAbsolutePath(), RaidType.COX);
+        assertEquals(1, filtered.size());
+        assertEquals(111L, filtered.get(0).getAccountHash());
+    }
+
+    @Test
+    public void TestProfileHashDisplayUsesHexFormatting() throws Exception {
+        java.nio.file.Path tempDir = Files.createTempDirectory("raid-data-tracker-labels");
+        FileReadWriter.clearDataRootDir();
+        FileReadWriter.setDataRootDir(tempDir.toFile());
+
+        File oldUser = new File(tempDir.toFile(), "alice");
+        File newUser = new File(tempDir.toFile(), "bob");
+        assertTrue(new File(oldUser, "cox").mkdirs());
+        assertTrue(new File(newUser, "cox").mkdirs());
+
+        try (java.io.FileWriter oldWriter = new java.io.FileWriter(new File(new File(oldUser, "cox"), "raid_tracker_data.log"))) {
+            oldWriter.write("{\"profileType\":\"NORMAL\",\"accountHash\":111,\"date\":1000,\"inRaidChambers\":true,\"specialLoot\":\"Shared Loot\",\"specialLootInOwnName\":false,\"specialLootReceiver\":\"alice\"}\n");
+        }
+        try (java.io.FileWriter newWriter = new java.io.FileWriter(new File(new File(newUser, "cox"), "raid_tracker_data.log"))) {
+            newWriter.write("{\"profileType\":\"NORMAL\",\"accountHash\":111,\"date\":2000,\"inRaidChambers\":true,\"specialLoot\":\"Shared Loot\",\"specialLootInOwnName\":true,\"specialLootReceiver\":\"bob\"}\n");
+        }
+
+        fw.updateUsername("bob");
+        fw.setGson(new com.google.gson.Gson());
+
+        assertEquals("0x006f", fw.getProfileHashDisplayLabel("111"));
+    }
+
+    @Test
+    public void TestProfileHashDisplayUsesHexFormattingWithoutInference() throws Exception {
+        java.nio.file.Path tempDir = Files.createTempDirectory("raid-data-tracker-hex");
+        FileReadWriter.clearDataRootDir();
+        FileReadWriter.setDataRootDir(tempDir.toFile());
+
+        File userDir = new File(tempDir.toFile(), "player");
+        File coxDir = new File(userDir, "cox");
+        assertTrue(coxDir.mkdirs());
+
+        try (java.io.FileWriter writer = new java.io.FileWriter(new File(coxDir, "raid_tracker_data.log"))) {
+            writer.write("{\"profileType\":\"NORMAL\",\"accountHash\":999,\"date\":500,\"inRaidChambers\":true,\"specialLoot\":\"Shared Loot\",\"specialLootInOwnName\":false,\"specialLootReceiver\":\"\"}\n");
+        }
+
+        fw.updateUsername("player");
+        fw.setGson(new com.google.gson.Gson());
+
+        assertEquals("0x03e7", fw.getProfileHashDisplayLabel("999"));
+    }
 }

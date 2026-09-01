@@ -7,6 +7,7 @@ import com.raidtracker.RaidTrackerItem;
 import com.raidtracker.RaidType;
 import com.raidtracker.WorldUtils;
 import com.raidtracker.filereadwriter.FileReadWriter;
+import com.raidtracker.filereadwriter.ProfileHashDisplay;
 
 import java.awt.Insets;
 import javax.swing.BorderFactory;
@@ -180,7 +181,9 @@ public class RaidTrackerPanel extends PluginPanel {
 	private Component titleComponent;
 	private Component filterComponent;
     private JComboBox<String> profileSelector;
+    private JComboBox<String> profileHashSelector;
     private boolean updatingProfileSelector;
+    private boolean updatingProfileHashSelector;
 
     public RaidTrackerPanel(
         final ItemManager itemManager,
@@ -1150,6 +1153,32 @@ public class RaidTrackerPanel extends PluginPanel {
                 return;
             }
             fw.setProfileName(selectedProfile);
+            refreshProfileSelector();
+            if (loaded) {
+                updateView();
+            }
+        });
+
+        profileHashSelector = new JComboBox<>();
+        refreshProfileHashSelector();
+        profileHashSelector.setPreferredSize(new Dimension(130, 25));
+        profileHashSelector.setFocusable(false);
+        profileHashSelector.setToolTipText("Select profile hash to view");
+        profileHashSelector.setFont(FontManager.getRunescapeSmallFont());
+        profileHashSelector.addActionListener(e -> {
+            if (updatingProfileHashSelector) {
+                return;
+            }
+            String selectedLabel = (String) profileHashSelector.getSelectedItem();
+            if (selectedLabel == null) {
+                return;
+            }
+            String selectedHash = resolveSelectedProfileHash(selectedLabel);
+            if (selectedHash.equals(fw.getProfileHash())) {
+                return;
+            }
+            fw.setProfileHash(selectedHash);
+            refreshProfileHashSelector();
             if (loaded) {
                 updateView();
             }
@@ -1199,6 +1228,8 @@ public class RaidTrackerPanel extends PluginPanel {
         c.gridwidth = 2;
         c.anchor = GridBagConstraints.WEST;
         wrapper.add(profileSelector, c);
+        c.gridy = 6;
+        wrapper.add(profileHashSelector, c);
         c.gridwidth = 1;
 
         JPanel buttonWrapper = new JPanel();
@@ -1909,8 +1940,41 @@ public class RaidTrackerPanel extends PluginPanel {
 		}
 
         refreshProfileSelector();
+        refreshProfileHashSelector();
         loaded = true;
         updateView();
+    }
+
+    private void refreshProfileHashSelector() {
+        if (profileHashSelector == null) {
+            return;
+        }
+
+        String selectedHash = fw.getProfileHash();
+        if (selectedHash == null) {
+            selectedHash = FileReadWriter.ALL_PROFILE_HASHES;
+        }
+
+        DefaultComboBoxModel<String> profileHashModel = new DefaultComboBoxModel<>();
+        profileHashModel.addElement(FileReadWriter.ALL_PROFILE_HASHES);
+        for (String profileHash : fw.getProfileHashes()) {
+            profileHashModel.addElement(fw.getProfileHashDisplayLabel(profileHash));
+        }
+
+        updatingProfileHashSelector = true;
+        profileHashSelector.setModel(profileHashModel);
+        if (containsProfile(profileHashModel, selectedHash)) {
+            profileHashSelector.setSelectedItem(selectedHash);
+        } else {
+            String selectedDisplay = fw.getProfileHashDisplayLabel(selectedHash);
+            if (containsProfile(profileHashModel, selectedDisplay)) {
+                profileHashSelector.setSelectedItem(selectedDisplay);
+            } else {
+                profileHashSelector.setSelectedItem(FileReadWriter.ALL_PROFILE_HASHES);
+                fw.setProfileHash(FileReadWriter.ALL_PROFILE_HASHES);
+            }
+        }
+        updatingProfileHashSelector = false;
     }
 
     private void refreshProfileSelector() {
@@ -1947,6 +2011,10 @@ public class RaidTrackerPanel extends PluginPanel {
             }
         }
         return false;
+    }
+
+    private String resolveSelectedProfileHash(String selectedLabel) {
+        return ProfileHashDisplay.resolveSelectedHash(selectedLabel, fw.getProfileHashes(), fw::getProfileHashDisplayLabel);
     }
 
     public ArrayList<RaidTracker> filterRTListByName(String name) {
@@ -2274,6 +2342,12 @@ public class RaidTrackerPanel extends PluginPanel {
             default:
                 //all sizes
 
+        }
+
+        if (fw != null && !FileReadWriter.ALL_PROFILE_HASHES.equals(fw.getProfileHash())) {
+            tempRTList = tempRTList.stream()
+                .filter(RT -> String.valueOf(RT.getAccountHash()).equals(fw.getProfileHash()))
+                .collect(Collectors.toCollection(ArrayList::new));
         }
 
         //if people want to crash my plugin using a system year of before 1970, that's fine

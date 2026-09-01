@@ -20,6 +20,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static net.runelite.client.RuneLite.RUNELITE_DIR;
@@ -28,6 +29,7 @@ import net.runelite.client.util.Text;
 @Slf4j
 public class FileReadWriter {
 	public static final String ALL_PROFILE_TYPES = "All Profiles";
+	public static final String ALL_PROFILE_HASHES = "All Profiles";
 	private static File dataRootDirOverride;
 
 	public static void setDataRootDir(File rootDir) {
@@ -42,6 +44,8 @@ public class FileReadWriter {
 	private String username;
 	@Getter
 	private String profileName = ALL_PROFILE_TYPES;
+	@Getter
+	private String profileHash = ALL_PROFILE_HASHES;
 	private String profileFolder;
 	private String coxDir;
 	private String tobDir;
@@ -74,6 +78,14 @@ public class FileReadWriter {
 
 	public List<String> getProfileNames() {
 		return getProfileTypeNames(getDataRootDir());
+	}
+
+	public List<String> getProfileHashes() {
+		return getProfileHashValues(getDataRootDir());
+	}
+
+	public String getProfileHashDisplayLabel(String hashValue) {
+		return ProfileHashDisplay.format(hashValue);
 	}
 
 	private List<String> getProfileTypeNames(File rootDir) {
@@ -118,6 +130,68 @@ public class FileReadWriter {
 			} catch (IOException e) {
 				log.warn("Error discovering profile types from {}", logFile, e);
 			}
+	}
+
+	private List<String> getProfileHashValues(File rootDir) {
+		List<String> profileHashes = new ArrayList<>();
+		File[] profileDirs = rootDir.listFiles(File::isDirectory);
+		if (profileDirs == null) {
+			return profileHashes;
+		}
+
+		for (File profileDir : profileDirs) {
+			for (RaidType raidType : RaidType.values()) {
+				File logFile = new File(new File(profileDir, raidType.name().toLowerCase()), "raid_tracker_data.log");
+				if (!logFile.isFile() && profileDir.getName().equalsIgnoreCase(raidType.name())) {
+					logFile = new File(profileDir, "raid_tracker_data.log");
+				}
+				collectProfileHashes(logFile, profileHashes);
+			}
+		}
+		profileHashes.sort(Comparator.comparingLong(value -> {
+			try {
+				return Long.parseLong(value);
+			} catch (NumberFormatException e) {
+				return Long.MIN_VALUE;
+			}
+		}));
+		return profileHashes;
+	}
+
+	private void collectProfileHashes(File logFile, List<String> profileHashes) {
+		if (!logFile.isFile()) {
+			return;
+		}
+
+		try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				try {
+					JsonObject json = new JsonParser().parse(line).getAsJsonObject();
+					if (json.has("accountHash") && !json.get("accountHash").isJsonNull()) {
+						String profileHash = String.valueOf(json.get("accountHash").getAsLong());
+						if (!"-1".equals(profileHash) && !profileHashes.contains(profileHash)) {
+							profileHashes.add(profileHash);
+						}
+					}
+				} catch (IllegalStateException | JsonSyntaxException ignored) {
+				}
+			}
+		} catch (IOException e) {
+			log.warn("Error discovering profile hashes from {}", logFile, e);
+		}
+	}
+
+	public void setProfileHash(String profileHash) {
+		if (profileHash == null || profileHash.trim().isEmpty()) {
+			return;
+		}
+		this.profileHash = profileHash;
+	}
+
+	private boolean matchesSelectedProfileHash(RaidTracker parsed) {
+		return parsed != null && (ALL_PROFILE_HASHES.equals(profileHash)
+			|| String.valueOf(parsed.getAccountHash()).equals(profileHash));
 	}
 
 	private boolean hasTrackedRaidFolders(File profileRoot) {
@@ -226,7 +300,7 @@ public class FileReadWriter {
 
 				try {
 					RaidTracker parsed = gson.fromJson(parser.parse(line), RaidTracker.class);
-					if (matchesSelectedProfileType(parsed)) {
+					if (matchesSelectedProfileType(parsed) && matchesSelectedProfileHash(parsed)) {
 						RTList.add(parsed);
 					}
 				} catch (JsonSyntaxException e) {
@@ -290,6 +364,7 @@ public class FileReadWriter {
 	public void updateUsername(final String username) {
 		this.username = username;
 		profileName = ALL_PROFILE_TYPES;
+		profileHash = ALL_PROFILE_HASHES;
 		profileFolder = username;
 		createFolders();
 	}
