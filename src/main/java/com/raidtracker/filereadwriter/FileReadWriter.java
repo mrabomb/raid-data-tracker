@@ -10,8 +10,9 @@ import com.google.inject.Inject;
 import com.raidtracker.RaidTracker;
 import com.raidtracker.RaidTrackerItem;
 import com.raidtracker.RaidType;
+import com.raidtracker.profile.ProfileFilter;
+import com.raidtracker.profile.ProfileSelection;
 import java.util.stream.Collectors;
-import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import java.io.BufferedReader;
@@ -22,14 +23,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static net.runelite.client.RuneLite.RUNELITE_DIR;
 import net.runelite.client.util.Text;
 
 @Slf4j
 public class FileReadWriter {
-	public static final String ALL_PROFILE_TYPES = "All Profiles";
-	public static final String ALL_PROFILE_HASHES = "All Profiles";
 	private static File dataRootDirOverride;
 
 	public static void setDataRootDir(File rootDir) {
@@ -40,23 +40,22 @@ public class FileReadWriter {
 		dataRootDirOverride = null;
 	}
 
-	@Getter
 	private String username;
-	@Getter
-	private String profileName = ALL_PROFILE_TYPES;
-	@Getter
-	private String profileHash = ALL_PROFILE_HASHES;
-	private String profileFolder;
+	private final ProfileSelection profileSelection = new ProfileSelection();
 	private String coxDir;
 	private String tobDir;
 	private String toaDir;
-    private String defaultDir;
+	private String defaultDir;
 
 	@Inject
-    @Setter
+	@Setter
 	private Gson gson;
 
-	private File getDataRootDir() {
+	public boolean hasUsername() {
+		return username != null;
+	}
+
+	public File getDataRootDir() {
 		if (dataRootDirOverride != null) {
 			return dataRootDirOverride;
 		}
@@ -76,122 +75,36 @@ public class FileReadWriter {
 		return primary.exists() || !legacy.exists() ? primary : legacy;
 	}
 
-	public List<String> getProfileNames() {
-		return getProfileTypeNames(getDataRootDir());
+	public String getSelectedProfileType() {
+		return profileSelection.getSelectedProfileType();
 	}
 
-	public List<String> getProfileHashes() {
-		return getProfileHashValues(getDataRootDir());
+	public void setSelectedProfileType(String selectedProfileType) {
+		profileSelection.setSelectedProfileType(selectedProfileType);
+	}
+
+	public String getProfileHash() {
+		return profileSelection.getProfileHash();
+	}
+
+	public void setProfileHash(String profileHash) {
+		profileSelection.setProfileHash(profileHash);
 	}
 
 	public String getProfileHashDisplayLabel(String hashValue) {
 		return ProfileHashDisplay.format(hashValue);
 	}
 
-	private List<String> getProfileTypeNames(File rootDir) {
-		List<String> profileTypes = new ArrayList<>();
-		File[] profileDirs = rootDir.listFiles(File::isDirectory);
-		if (profileDirs == null) {
-			return profileTypes;
+	private File getRaidLogFile(File profileDir, RaidType raidType) {
+		File logFile = new File(new File(profileDir, raidType.name().toLowerCase()), "raid_tracker_data.log");
+		if (!logFile.isFile() && profileDir.getName().equalsIgnoreCase(raidType.name())) {
+			return new File(profileDir, "raid_tracker_data.log");
 		}
-
-		for (File profileDir : profileDirs) {
-			for (RaidType raidType : RaidType.values()) {
-				File logFile = new File(new File(profileDir, raidType.name().toLowerCase()), "raid_tracker_data.log");
-				if (!logFile.isFile() && profileDir.getName().equalsIgnoreCase(raidType.name())) {
-					logFile = new File(profileDir, "raid_tracker_data.log");
-				}
-				collectProfileTypes(logFile, profileTypes);
-			}
-		}
-		profileTypes.sort(String::compareToIgnoreCase);
-		return profileTypes;
-	}
-
-	private void collectProfileTypes(File logFile, List<String> profileTypes) {
-		if (!logFile.isFile()) {
-			return;
-		}
-
-			try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
-				String line;
-				while ((line = reader.readLine()) != null) {
-					try {
-						JsonObject json = new JsonParser().parse(line).getAsJsonObject();
-						if (json.has("profileType") && !json.get("profileType").isJsonNull()) {
-							String profileType = json.get("profileType").getAsString();
-							if (!profileType.trim().isEmpty() && !profileTypes.contains(profileType)) {
-								profileTypes.add(profileType);
-							}
-						}
-					} catch (IllegalStateException | JsonSyntaxException ignored) {
-					}
-				}
-			} catch (IOException e) {
-				log.warn("Error discovering profile types from {}", logFile, e);
-			}
-	}
-
-	private List<String> getProfileHashValues(File rootDir) {
-		List<String> profileHashes = new ArrayList<>();
-		File[] profileDirs = rootDir.listFiles(File::isDirectory);
-		if (profileDirs == null) {
-			return profileHashes;
-		}
-
-		for (File profileDir : profileDirs) {
-			for (RaidType raidType : RaidType.values()) {
-				File logFile = new File(new File(profileDir, raidType.name().toLowerCase()), "raid_tracker_data.log");
-				if (!logFile.isFile() && profileDir.getName().equalsIgnoreCase(raidType.name())) {
-					logFile = new File(profileDir, "raid_tracker_data.log");
-				}
-				collectProfileHashes(logFile, profileHashes);
-			}
-		}
-		profileHashes.sort(Comparator.comparingLong(value -> {
-			try {
-				return Long.parseLong(value);
-			} catch (NumberFormatException e) {
-				return Long.MIN_VALUE;
-			}
-		}));
-		return profileHashes;
-	}
-
-	private void collectProfileHashes(File logFile, List<String> profileHashes) {
-		if (!logFile.isFile()) {
-			return;
-		}
-
-		try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
-			String line;
-			while ((line = reader.readLine()) != null) {
-				try {
-					JsonObject json = new JsonParser().parse(line).getAsJsonObject();
-					if (json.has("accountHash") && !json.get("accountHash").isJsonNull()) {
-						String profileHash = String.valueOf(json.get("accountHash").getAsLong());
-						if (!"-1".equals(profileHash) && !profileHashes.contains(profileHash)) {
-							profileHashes.add(profileHash);
-						}
-					}
-				} catch (IllegalStateException | JsonSyntaxException ignored) {
-				}
-			}
-		} catch (IOException e) {
-			log.warn("Error discovering profile hashes from {}", logFile, e);
-		}
-	}
-
-	public void setProfileHash(String profileHash) {
-		if (profileHash == null || profileHash.trim().isEmpty()) {
-			return;
-		}
-		this.profileHash = profileHash;
+		return logFile;
 	}
 
 	private boolean matchesSelectedProfileHash(RaidTracker parsed) {
-		return parsed != null && (ALL_PROFILE_HASHES.equals(profileHash)
-			|| String.valueOf(parsed.getAccountHash()).equals(profileHash));
+		return ProfileFilter.matchesSelectedProfileHash(parsed, profileSelection.getProfileHash());
 	}
 
 	private boolean hasTrackedRaidFolders(File profileRoot) {
@@ -206,10 +119,7 @@ public class FileReadWriter {
 			return false;
 		}
 		for (RaidType raidType : RaidType.values()) {
-			File logFile = new File(new File(profileRoot, raidType.name().toLowerCase()), "raid_tracker_data.log");
-			if (!logFile.isFile() && profileRoot.getName().equalsIgnoreCase(raidType.name())) {
-				logFile = new File(profileRoot, "raid_tracker_data.log");
-			}
+			File logFile = getRaidLogFile(profileRoot, raidType);
 			if (logFile.isFile() && logFile.length() > 0) {
 				return true;
 			}
@@ -217,18 +127,8 @@ public class FileReadWriter {
 		return false;
 	}
 
-	public void setProfileName(String profileName) {
-		if (profileName == null || profileName.trim().isEmpty()) {
-			return;
-		}
-		this.profileName = profileName;
-		this.profileFolder = username;
-	}
-
 	private boolean matchesSelectedProfileType(RaidTracker parsed) {
-		return parsed != null && (ALL_PROFILE_TYPES.equals(profileName)
-				|| (parsed.getProfileType() != null
-				&& parsed.getProfileType().equalsIgnoreCase(profileName)));
+		return ProfileFilter.matchesSelectedProfileType(parsed, profileSelection.getSelectedProfileType());
 	}
 
     public void writeToFile(RaidTracker raidTracker) {
@@ -331,21 +231,17 @@ public class FileReadWriter {
 	}
 
     public void createFolders() {
-		File dir = getDataRootDir();
-		IGNORE_RESULT(dir.mkdir());
-		if (!hasTrackedRaidFolders(dir)) {
-			dir = new File(dir, username);
-		}
-		IGNORE_RESULT(dir.mkdir());
-		IGNORE_RESULT(dir.mkdir());
+		File root = getDataRootDir();
+		File dir = new File(root, username != null ? username : "unknown");
+		IGNORE_RESULT(dir.mkdirs());
 		File dir_cox = new File(dir, "cox");
 		File dir_tob = new File(dir, "tob");
 		File dir_toa = new File(dir, "toa");
         File dir_default = new File(dir, "unknown");
-		IGNORE_RESULT(dir_cox.mkdir());
-		IGNORE_RESULT(dir_tob.mkdir());
-		IGNORE_RESULT(dir_toa.mkdir());
-        IGNORE_RESULT(dir_default.mkdir());
+		IGNORE_RESULT(dir_cox.mkdirs());
+		IGNORE_RESULT(dir_tob.mkdirs());
+		IGNORE_RESULT(dir_toa.mkdirs());
+        IGNORE_RESULT(dir_default.mkdirs());
 		this.coxDir = dir_cox.getAbsolutePath();
 		this.tobDir = dir_tob.getAbsolutePath();
 		this.toaDir = dir_toa.getAbsolutePath();
@@ -363,9 +259,7 @@ public class FileReadWriter {
 
 	public void updateUsername(final String username) {
 		this.username = username;
-		profileName = ALL_PROFILE_TYPES;
-		profileHash = ALL_PROFILE_HASHES;
-		profileFolder = username;
+//		profileSelection.reset();
 		createFolders();
 	}
 
